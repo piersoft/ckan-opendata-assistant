@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.49</div>
+  <div class="header-badge">v2026.03.24.50</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -957,13 +957,29 @@ function renderResults(rows, label, append=false) {
     return;
   }
 
-  // Deduplica per URI
-  const seen = new Set();
-  const unique = [];
+  // Deduplica per URI — aggrega rhName multipli con " / "
+  const seenMap = new Map();
+  const rhNames = new Map();
   for (const r of rows) {
     const d = val(r,'d');
-    if (!seen.has(d)) { seen.add(d); unique.push(r); }
+    const rh = val(r,'rhName');
+    if (!seenMap.has(d)) {
+      seenMap.set(d, r);
+      rhNames.set(d, rh ? [rh] : []);
+    } else if (rh && !rhNames.get(d).includes(rh)) {
+      rhNames.get(d).push(rh);
+    }
   }
+  // Crea righe uniche con rhName concatenato
+  const unique = [...seenMap.values()].map(r => {
+    const d = val(r,'d');
+    const names = rhNames.get(d) || [];
+    if (names.length <= 1) return r;
+    // Clona la riga con rhName concatenato
+    const clone = JSON.parse(JSON.stringify(r));
+    if (clone.rhName) clone.rhName.value = names.join(' / ');
+    return clone;
+  });
 
   const hasMore = unique.length >= PAGE_SIZE;
   const currentOffset = lastQuery ? lastQuery.offset : 0;
