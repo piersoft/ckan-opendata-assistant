@@ -1082,7 +1082,7 @@ function renderDatasetDetail(ds) {
       </div>
     </div>
     <div class="action-chips">
-      <span class="action-chip" onclick="window.open('https://www.dati.gov.it/view-dataset/${ds.name}','_blank')">🔗 Apri su dati.gov.it</span>
+      <span class="action-chip" onclick="window.open('https://www.dati.gov.it/view-dataset/dataset?id=${ds.name}','_blank')">🔗 Apri su dati.gov.it</span>
       <span class="action-chip" onclick="copyId('${ds.id}')">📋 Copia ID</span>
       <span class="action-chip" onclick="showSimilar('${ds.title}')">🔄 Simili</span>
     </div>
