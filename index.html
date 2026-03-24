@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.23</div>
+  <div class="header-badge">v2026.03.24.24</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1407,7 +1407,6 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   if (!container) return;
   container.innerHTML = '<div class="data-preview-loading">⏳ Caricamento anteprima…</div>';
 
-  // Fetch diretto — funziona solo se il server ha CORS aperto
   if (!resourceUrl) {
     container.innerHTML = '<div class="data-preview-loading">⚠️ URL risorsa non disponibile.</div>';
     return;
@@ -1420,33 +1419,35 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
     const fmt = format.toUpperCase();
     if (fmt === 'CSV') {
       const text = await resp.text();
-      const rows = parseCSV(text, 12);
-      if (rows.length < 2) throw new Error('Nessun dato nel file');
-      const headers = rows[0].map(function(h,i){ return { id: h.trim() || ('col'+i) }; });
-      const records = rows.slice(1, 11).map(function(r){
+      const allRows = parseCSV(text);
+      if (allRows.length < 2) throw new Error('Nessun dato nel file');
+
+      const totalRows = allRows.length - 1; // escludi header
+      const headers   = allRows[0].map(function(h,i){ return { id: h.trim() || ('col'+i) }; });
+      const records   = allRows.slice(1, 11).map(function(r){
         var obj = {};
         headers.forEach(function(h,i){ obj[h.id] = (r[i]||'').trim(); });
         return obj;
       });
-      renderPreviewTable(container, headers, records, '?');
+      renderPreviewTable(container, headers, records, totalRows);
 
     } else if (fmt === 'XLSX') {
-      // XLSX richiede SheetJS — non disponibile qui, mostra link diretto
       container.innerHTML =
-        '<div class="data-preview-loading">📥 <a href="' + resourceUrl + '" target="_blank" ' +
-        'style="color:var(--primary);font-weight:600">Scarica il file XLSX</a> per visualizzarlo.</div>';
+        '<div class="data-preview-loading">📥 File XLSX: ' +
+        '<a href="' + resourceUrl + '" target="_blank" ' +
+        'style="color:var(--primary);font-weight:600">Scarica per visualizzare ↗</a></div>';
     }
   } catch(e) {
     container.innerHTML =
       '<div class="data-preview-loading">⚠️ Anteprima non disponibile' +
-      (e.message ? ': ' + e.message : '') +
-      '. <a href="' + resourceUrl + '" target="_blank" ' +
+      (e.message ? ' (' + e.message + ')' : '') + '. ' +
+      '<a href="' + resourceUrl + '" target="_blank" ' +
       'style="color:var(--primary);font-weight:600">Apri direttamente ↗</a></div>';
   }
 }
 
-function parseCSV(text, maxRows) {
-  var lines = text.split('\n').slice(0, maxRows + 1);
+function parseCSV(text) {
+  var lines = text.split('\n');
   return lines.map(function(line) {
     var result = [], current = '', inQuotes = false;
     for (var i = 0; i < line.length; i++) {
@@ -1473,7 +1474,7 @@ function renderPreviewTable(container, fields, records, total) {
   }).join('');
   container.innerHTML =
     '<div class="data-preview-header">' +
-      '<span>📊 Anteprima dati (' + records.length + ' righe su ' + total + ' totali)</span>' +
+      '<span>📊 Anteprima dati — prime ' + records.length + ' righe su ' + total.toLocaleString('it') + ' totali</span>' +
     '</div>' +
     '<div class="data-preview-table"><table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>';
 }
