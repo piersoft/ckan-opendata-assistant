@@ -285,7 +285,7 @@ header{
   transition:max-height .35s ease,padding .2s ease;
   flex-shrink:0;position:relative;
 }
-.adv-panel.open{max-height:400px;padding:14px 20px;overflow:visible}
+.adv-panel.open{max-height:400px;padding:14px 20px;overflow:visible;position:relative;z-index:10}
 .adv-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end}
 .adv-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
 .adv-field label{
@@ -316,12 +316,13 @@ header{
 .adv-toggle:hover,.adv-toggle.open{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
 
 /* Autocomplete */
-.autocomplete-wrap{position:relative}
+.autocomplete-wrap{position:relative;z-index:9999}
 .autocomplete-list{
-  position:absolute;top:100%;left:0;right:0;z-index:999;
-  background:white;border:1.5px solid var(--primary);border-top:none;
-  border-radius:0 0 var(--radius) var(--radius);
-  max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.15);
+  position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:9999;
+  background:white;border:1.5px solid var(--primary);
+  border-radius:var(--radius);
+  max-height:220px;overflow-y:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);
 }
 .ac-item{
   padding:7px 12px;font-size:12px;cursor:pointer;
@@ -461,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.5</div>
+  <div class="header-badge">v2026.03.24.7</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1034,9 +1035,9 @@ async function searchCatalog(catalogUri, catalogTitle) {
   runCombinedQuery(0);
 }
 // ── ULTIMI AGGIORNATI ─────────────────────────────────────────────────────
-async function loadRecent() {
-  clearAllFilters();
-  addMsg('🕐 Ultimi dataset aggiornati', true);
+async function loadRecent(offset=0) {
+  if (offset === 0) clearAllFilters();
+  if (offset === 0) addMsg('🕐 Ultimi dataset aggiornati', true);
   addTyping();
   try {
     const rows = await sparql(`
@@ -1051,9 +1052,10 @@ async function loadRecent() {
         OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
         OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
         FILTER(LANG(?title)='it'||LANG(?title)='')
-      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE}`);
+      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+    lastQuery = { type:'recent', params:{}, offset, label:'ultimi aggiornati' };
     removeTyping();
-    renderResults(rows, 'ultimi aggiornati');
+    renderResults(rows, 'ultimi aggiornati', offset > 0);
   } catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
 }
 
@@ -1215,14 +1217,19 @@ async function acPublisher(q) {
   acTimer = setTimeout(async () => {
     const data = await loadAcCache();
     const ql = q.toLowerCase();
-    const matches = data.filter(d => d.name.toLowerCase().includes(ql)).slice(0, 8);
+    // cerca su nome E su identifier IPA
+    const matches = data.filter(d =>
+      d.name.toLowerCase().includes(ql) || (d.identifier||'').toLowerCase().includes(ql)
+    ).slice(0, 10);
     if (!matches.length) { list.style.display = 'none'; return; }
-    list.innerHTML = matches.map(m =>
-      `<div class="ac-item" onclick="selectPub('${m.name.replace(/'/g,"\\'")}')">
-        <span>${m.name}</span>
-        <span class="ac-count">${m.count.toLocaleString('it')}</span>
-      </div>`
-    ).join('');
+    list.innerHTML = matches.map(m => {
+      const safeName = m.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
+      const safeId   = (m.identifier||'').replace(/'/g,"\'");
+      return `<div class="ac-item" onclick="selectPub('${safeName}','${safeId}')">
+        <span>${m.name} <span style="color:var(--text3);font-family:var(--mono);font-size:10px">[${m.identifier||''}]</span></span>
+        <span class="ac-count">${(m.count||0).toLocaleString('it')} ds</span>
+      </div>`;
+    }).join('');
     list.style.display = 'block';
   }, 250);
 }
@@ -1264,7 +1271,21 @@ async function loadMoreResults(offset) {
   setBusy(true);
   try {
     let rows = [];
-    if (lastQuery.type === 'keyword') {
+    if (lastQuery.type === 'recent') {
+      rows = await sparql(`
+        PREFIX dcat: <http://www.w3.org/ns/dcat#>
+        PREFIX dct:  <http://purl.org/dc/terms/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
+          ?d a dcat:Dataset .
+          ?d dct:title ?title .
+          ?d dct:modified ?modified .
+          OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
+          OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
+          OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
+          FILTER(LANG(?title)='it'||LANG(?title)='')
+        } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}\`);
+    } else if (lastQuery.type === 'keyword') {
       const q = lastQuery.params.q;
       const words = q.trim().split(/\s+/);
       const filter = words.map(w => {
