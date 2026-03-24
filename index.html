@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.51</div>
+  <div class="header-badge">v2026.03.24.52</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -974,10 +974,14 @@ function renderResults(rows, label, append=false) {
   const unique = [...seenMap.values()].map(r => {
     const d = val(r,'d');
     const names = rhNames.get(d) || [];
-    if (names.length <= 1) return r;
-    // Clona la riga con rhName concatenato
+    if (names.length === 0) return r;
+    // Clona la riga con rhName (usa il primo trovato o la concatenazione)
     const clone = JSON.parse(JSON.stringify(r));
-    if (clone.rhName) clone.rhName.value = names.join(' / ');
+    if (clone.rhName) {
+      clone.rhName.value = names.join(' / ');
+    } else if (names.length > 0) {
+      clone.rhName = { type: 'literal', value: names.join(' / ') };
+    }
     return clone;
   });
 
