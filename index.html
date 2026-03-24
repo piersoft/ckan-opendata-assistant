@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.35</div>
+  <div class="header-badge">v2026.03.24.36</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1004,6 +1004,7 @@ async function showDataset(dUri, title, org) {
     rows.forEach(r => {
       const accessURL  = val(r,'accessURL');
       const downloadURL = val(r,'downloadURL');
+      const key = accessURL || downloadURL;
       if (key && !distMap.has(key)) distMap.set(key, {
         title: val(r,'distTitle') || fmtLabel(val(r,'format')) || 'Risorsa',
         format: fmtLabel(val(r,'format')),
