@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.38</div>
+  <div class="header-badge">v2026.03.24.39</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -814,14 +814,12 @@ async function runCombinedQuery(offset=0) {
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
     if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
-    if (state.publisher && state.publisherType === 'name')
-      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
     var filters = "  " + LANG_FILTER + "\n";
     if (state.keywords)
       filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
     if (state.publisher && state.publisherType === 'name')
-      filters += '  FILTER(STR(?rhName) = "' + state.publisher + '")\n';
+      filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name "' + state.publisher.replace(/"/g,'\"') + '" ] })\n';
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
@@ -829,7 +827,7 @@ async function runCombinedQuery(offset=0) {
       "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
       triples +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-      (state.publisher && state.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
+      "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
       "  OPTIONAL { ?d dct:modified ?modified }\n" +
       filters +
       "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -988,7 +986,6 @@ async function showDataset(dUri, title, org) {
       "    OPTIONAL { ?dist dct:title ?distTitle }\n" +
       "    OPTIONAL { ?dist dct:format ?format }\n" +
       "    OPTIONAL { ?dist dcat:accessURL ?accessURL }\n" +
-      "    OPTIONAL { ?dist dcat:downloadURL ?downloadURL }\n" +
       "    OPTIONAL { ?dist dct:identifier ?resourceId }\n" +
       "  }\n" +
       "} LIMIT 30"
@@ -1001,7 +998,7 @@ async function showDataset(dUri, title, org) {
 
     // Risorse uniche
     const distMap = new Map();
-    rows.forEach(r => {
+        rows.forEach(r => {
       const accessURL  = val(r,'accessURL');
       const downloadURL = val(r,'downloadURL');
       const key = accessURL || downloadURL;
@@ -1035,7 +1032,13 @@ async function showDataset(dUri, title, org) {
             (d.format ? '<div style="font-size:10px;color:var(--text3);font-family:var(--mono)">' + d.format + '</div>' : '') +
             '</div>' +
             '<div style="display:flex;gap:6px">' +
-            (canPreview ? '<button class="res-btn preview" data-resid="' + (d.resourceId||'').replace(/"/g,'&quot;') + '" data-url="' + (d.downloadURL||d.url).replace(/"/g,'&quot;') + '" data-fmt="' + fmt + '" data-pid="' + pid + '" onclick="previewFromBtn(this)" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
+            (canPreview ? '<button class="res-btn preview" ' +
+            'data-resid="' + (d.resourceId||'').replace(/"/g,'&quot;') + '" ' +
+            'data-url="' + (d.downloadURL||d.url).replace(/"/g,'&quot;') + '" ' +
+            'data-fmt="' + fmt + '" ' +
+            'data-pid="' + pid + '" ' +
+            'onclick="previewFromBtn(this)" ' +
+            'style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
             '<button class="res-btn open" onclick="window.open(\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
             '</div>' +
             (canPreview ? '<div id="' + pid + '" style="grid-column:1/-1;width:100%;margin-top:4px"></div>' : '') +
@@ -1304,7 +1307,7 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
   if (q)
     filters += "  FILTER(" + kwFilter(q.trim().split(/\s+/)) + ")\n";
   if (pub)
-    filters += '  FILTER(EXISTS { ?d dct:rightsHolder ?rh2 . ?rh2 foaf:name ?rhn ] . FILTER(CONTAINS(LCASE(STR(?rhn)),"' + pub.toLowerCase().replace(/"/g,'') + '")) })\n';
+    filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name ?rhn ] . FILTER(CONTAINS(LCASE(STR(?rhn)),"' + pub.toLowerCase().replace(/"/g,'') + '")) })\n';
 
   var orderBy = (sort === 'title') ? '?title' : 'DESC(?modified)';
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1361,41 +1364,22 @@ async function acPublisher(q) {
   const list = document.getElementById('acList');
   if (!q || q.length < 2) { list.style.display = 'none'; return; }
   acTimer = setTimeout(async () => {
-    try {
-      const ql = q.toLowerCase().replace(/"/g, '');
-      const rows = await sparql(
-        "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
-        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
-        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-        "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
-        "  ?d a dcat:Dataset .\n" +
-        "  ?d dct:rightsHolder ?rh .\n" +
-        "  ?rh foaf:name ?name .\n" +
-        '  FILTER(CONTAINS(LCASE(STR(?name)),"' + ql + '"))\n' +
-        "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 10"
-      );
-
-      if (!rows.length) { list.style.display = 'none'; return; }
-
-      const seen = new Set();
-      const unique = [];
-      rows.forEach(r => {
-        const n = val(r,'name').trim();
-        if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); unique.push({ name: n, count: parseInt(val(r,'count')||'0') }); }
-      });
-
-      list.innerHTML = unique.map(m => {
-        const safeName = m.name.replace(/'/g, "\'");
-        return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
-          '<span>' + m.name + '</span>' +
-          '<span class="ac-count">' + m.count.toLocaleString('it') + ' ds</span>' +
-          '</div>';
-      }).join('');
-      list.style.display = 'block';
-    } catch(e) {
-      list.style.display = 'none';
-    }
-  }, 350);
+    const data = await loadAcCache();
+    const ql = q.toLowerCase();
+    // cerca su nome E su identifier IPA
+    const matches = data.filter(d =>
+      d.name.toLowerCase().includes(ql) || (d.identifier||'').toLowerCase().includes(ql)
+    ).slice(0, 10);
+    if (!matches.length) { list.style.display = 'none'; return; }
+    list.innerHTML = matches.map(m => {
+      const safeName = m.name.replace(/'/g,"\\'");
+      return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
+        '<span>' + m.name + '</span>' +
+        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
+        '</div>';
+    }).join('');
+    list.style.display = 'block';
+  }, 250);
 }
 
 function selectPub(name) {
@@ -1448,8 +1432,7 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   }
 
   try {
-    const proxyUrl = CSV_PROXY + encodeURIComponent(resourceUrl);
-    const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(30000) });
+    const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(30000) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
     const fmt = format.toUpperCase();
@@ -1477,8 +1460,8 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
     var msg = '⚠️ Anteprima non disponibile';
     if (e.name === 'TimeoutError' || (e.message && e.message.includes('aborted')))
       msg = '⏱️ Timeout — il file è troppo grande o il server è lento';
-    else if (e.message && (e.message.includes('CORS') || e.message.includes('fetch') || e.message.includes('Failed')))
-      msg = '🔒 Accesso bloccato dal server (CORS)';
+    else if (e.message && e.message.includes('CORS'))
+      msg = '🔒 CORS bloccato — il server non permette accesso diretto';
     else if (e.message && e.message.includes('HTTP'))
       msg = '⚠️ ' + e.message;
     container.innerHTML =
@@ -1584,14 +1567,12 @@ function buildCombinedQuery(s, offset) {
     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
   if (s.publisher && s.publisherType === 'uri')
     triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
-  if (s.publisher && s.publisherType === 'name')
-    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
   if (s.publisher && s.publisherType === 'name')
-    filters += '  FILTER(STR(?rhName) = "' + s.publisher + '")\n';
+    filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name "' + s.publisher.replace(/"/g,'\"') + '" ] })\n';
 
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
@@ -1599,7 +1580,7 @@ function buildCombinedQuery(s, offset) {
     "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-    (s.publisher && s.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
+    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
     "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -1699,45 +1680,28 @@ async function filterOrgs(q) {
     return;
   }
   orgSearchTimer = setTimeout(async () => {
-    try {
-      const ql = q.toLowerCase().replace(/"/g, '');
-      const rows = await sparql(
-        "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
-        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
-        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-        "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
-        "  ?d a dcat:Dataset .\n" +
-        "  ?d dct:rightsHolder ?rh .\n" +
-        "  ?rh foaf:name ?name .\n" +
-        '  FILTER(CONTAINS(LCASE(STR(?name)),"' + ql + '"))\n' +
-        "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 12"
-      );
+    const data = await loadAcCache();
+    const ql = q.toLowerCase();
+    const matches = data.filter(d =>
+      d.name.toLowerCase().includes(ql) ||
+      (d.identifier||'').toLowerCase().includes(ql)
+    ).slice(0, 12);
 
-      if (!rows.length) {
-        dropdown.classList.remove('open');
-        return;
-      }
-
-      // Deduplica per nome normalizzato
-      const seen = new Set();
-      const unique = [];
-      rows.forEach(r => {
-        const n = val(r,'name').trim();
-        if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); unique.push({ name: n, count: parseInt(val(r,'count')||'0') }); }
-      });
-
-      dropdown.innerHTML = unique.map(m => {
-        const safeName = m.name.replace(/'/g, "\'");
-        return '<div class="ac-item" onclick="selectOrgFromSearch(\'' + safeName + '\')">' +
-          '<span>' + m.name + '</span>' +
-          '<span class="ac-count">' + m.count.toLocaleString('it') + ' ds</span>' +
-          '</div>';
-      }).join('');
-      dropdown.classList.add('open');
-    } catch(e) {
+    if (!matches.length) {
       dropdown.classList.remove('open');
+      return;
     }
-  }, 350);
+
+    dropdown.innerHTML = matches.map(m => {
+      const safeName = m.name.replace(/'/g, "\\'");
+      const safeId   = (m.identifier||'').replace(/'/g, "\\'");
+      return '<div class="ac-item" onclick="selectOrgFromSearch(\'' + safeName + '\',\'' + safeId + '\')">' +
+        '<span>' + m.name + '</span>' +
+        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
+        '</div>';
+    }).join('');
+    dropdown.classList.add('open');
+  }, 200);
 }
 
 function selectOrgFromSearch(name) {
