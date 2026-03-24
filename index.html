@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.34</div>
+  <div class="header-badge">v2026.03.24.35</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1004,7 +1004,6 @@ async function showDataset(dUri, title, org) {
     rows.forEach(r => {
       const accessURL  = val(r,'accessURL');
       const downloadURL = val(r,'downloadURL');
-      const key = accessURL || downloadURL; console.log("DIST:", {accessURL, downloadURL, key});
       if (key && !distMap.has(key)) distMap.set(key, {
         title: val(r,'distTitle') || fmtLabel(val(r,'format')) || 'Risorsa',
         format: fmtLabel(val(r,'format')),
@@ -1035,8 +1034,7 @@ async function showDataset(dUri, title, org) {
             (d.format ? '<div style="font-size:10px;color:var(--text3);font-family:var(--mono)">' + d.format + '</div>' : '') +
             '</div>' +
             '<div style="display:flex;gap:6px">' +
-            (canPreview ? '<button class="res-btn preview" onclick="tryDataPreview(\'' + (d.resourceId||'').replace(/'/g,"\'") + '\',\'' + d.url.replace(/'/g,"\'") + '\',\'' + fmt + '\',\'' + pid + '\')" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
-            console.log('d.url:', d.url, 'd.downloadURL:', d.downloadURL) ||
+            (canPreview ? '<button class="res-btn preview" onclick="tryDataPreview(\'' + (d.resourceId||'').replace(/'/g,"\'") + '\',\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'' + fmt + '\',\'' + pid + '\')" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
             '<button class="res-btn open" onclick="window.open(\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
             '</div>' +
             (canPreview ? '<div id="' + pid + '" style="grid-column:1/-1;width:100%;margin-top:4px"></div>' : '') +
