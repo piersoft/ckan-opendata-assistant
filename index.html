@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.47</div>
+  <div class="header-badge">v2026.03.24.49</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1083,7 +1083,7 @@ async function showDataset(dUri, title, org) {
       ? dists.map(function(d) {
           var fmt = d.format.toUpperCase();
           var previewUrl = d.downloadURL || '';
-          var canPreview = (fmt === 'CSV' || fmt === 'XLSX') &&
+          var canPreview = (fmt === 'CSV') &&
             !previewUrl.includes('dati.gov.it/sites/default') &&
             !previewUrl.includes('dati.gov.it/view-dataset') &&
             !previewUrl.includes('dati.gov.it/dataset');
@@ -1486,8 +1486,12 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   }
 
   try {
-    const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(30000) });
+    const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(30000), redirect: 'follow' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    // Verifica Content-Type: deve essere CSV o testo, non HTML
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('text/html') || ct.includes('application/xhtml'))
+      throw new Error('Il server ha restituito una pagina HTML invece del file');
 
     const fmt = format.toUpperCase();
     if (fmt === 'CSV') {
