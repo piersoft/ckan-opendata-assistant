@@ -977,7 +977,7 @@ async function showDataset(dUri, title, org) {
       "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
       "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-      "SELECT ?description ?theme ?license ?modified ?distTitle ?format ?accessURL ?resourceId WHERE {\n" +
+      "SELECT ?description ?theme ?license ?modified ?distTitle ?format ?accessURL ?downloadURL ?resourceId WHERE {\n" +
       "  BIND(<" + dUri + "> AS ?d)\n" +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
       "  OPTIONAL { ?d dcat:theme ?theme }\n" +
