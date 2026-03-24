@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.27</div>
+  <div class="header-badge">v2026.03.24.28</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -986,6 +986,7 @@ async function showDataset(dUri, title, org) {
       "    OPTIONAL { ?dist dct:title ?distTitle }\n" +
       "    OPTIONAL { ?dist dct:format ?format }\n" +
       "    OPTIONAL { ?dist dcat:accessURL ?accessURL }\n" +
+      "    OPTIONAL { ?dist dcat:downloadURL ?downloadURL }\n" +
       "    OPTIONAL { ?dist dct:identifier ?resourceId }\n" +
       "  }\n" +
       "} LIMIT 30"
@@ -1005,6 +1006,7 @@ async function showDataset(dUri, title, org) {
         format: fmtLabel(val(r,'format')),
         formatUri: val(r,'format'),
         url,
+        downloadURL: val(r,'downloadURL') || url,
         resourceId: val(r,'resourceId')
       });
     });
