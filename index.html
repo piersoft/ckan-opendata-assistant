@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.50</div>
+  <div class="header-badge">v2026.03.24.51</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1099,10 +1099,7 @@ async function showDataset(dUri, title, org) {
       ? dists.map(function(d) {
           var fmt = d.format.toUpperCase();
           var previewUrl = d.downloadURL || '';
-          var canPreview = (fmt === 'CSV') &&
-            !previewUrl.includes('dati.gov.it/sites/default') &&
-            !previewUrl.includes('dati.gov.it/view-dataset') &&
-            !previewUrl.includes('dati.gov.it/dataset');
+          var canPreview = fmt === 'CSV' && previewUrl.length > 0;
           var pid = 'prev_' + Math.random().toString(36).slice(2);
           return '<div class="resource-item">' +
             '<div class="resource-item-header">' +
@@ -1112,7 +1109,7 @@ async function showDataset(dUri, title, org) {
             '<div style="display:flex;gap:6px">' +
             (canPreview ? '<button class="res-btn preview" ' +
             'data-resid="' + (d.resourceId||'').replace(/"/g,'&quot;') + '" ' +
-            'data-url="' + (d.downloadURL||d.url).replace(/"/g,'&quot;') + '" ' +
+            'data-url="' + d.downloadURL.replace(/"/g,'&quot;') + '" ' +
             'data-fmt="' + fmt + '" ' +
             'data-pid="' + pid + '" ' +
             'onclick="previewFromBtn(this)" ' +
