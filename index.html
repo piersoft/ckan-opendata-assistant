@@ -461,7 +461,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.4</div>
+  <div class="header-badge">v2026.03.24.5</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -555,8 +555,8 @@ header{
           </select>
         </div>
         <div class="adv-field autocomplete-wrap">
-          <label>Catalogo</label>
-          <input type="text" id="advPub" placeholder="es. Open Data Bari, Regione Puglia…"
+          <label>Amministrazione (rightsHolder)</label>
+          <input type="text" id="advPub" placeholder="es. Comune di Bari, r_puglia…"
                  oninput="acPublisher(this.value)" autocomplete="off" />
           <div class="autocomplete-list" id="acList" style="display:none"></div>
         </div>
@@ -1089,7 +1089,7 @@ async function doAdvSearch() {
   const parts = [];
   if (q)       parts.push(`"${q}"`);
   if (theme)   parts.push(`tema:${theme}`);
-  if (pub)     parts.push(`publisher:${pub}`);
+  if (pub)     parts.push(`amm:${pub}`);
   if (format)  parts.push(`formato:${format}`);
   if (license) parts.push(`licenza:${license}`);
   const label = parts.join(' · ');
@@ -1111,6 +1111,19 @@ async function doAdvSearch() {
     let triples = `?d a dcat:Dataset . ?d dct:title ?title .`;
     if (theme)  triples += `\n  ?d dcat:theme <${THEME_BASE}${theme}> .`;
     if (format) triples += `\n  ?d dcat:distribution ?dist . ?dist dct:format <${FT_BASE}${format}> .`;
+    // Filtro rightsHolder
+    const rhPart = fqParts.find(p => p.startsWith('EXACT_RIGHTSHOLDER:') || p.startsWith('CONTAINS_RIGHTSHOLDER:'));
+    if (rhPart) {
+      fqParts.splice(fqParts.indexOf(rhPart), 1); // rimuovi dal array
+      if (rhPart.startsWith('EXACT_RIGHTSHOLDER:')) {
+        const ipa = rhPart.replace('EXACT_RIGHTSHOLDER:','');
+        triples += `\n  ?d dct:rightsHolder ?rh . ?rh dct:identifier "${ipa}" .`;
+      } else {
+        const nm = rhPart.replace('CONTAINS_RIGHTSHOLDER:','').toLowerCase().replace(/"/g,'');
+        triples += `\n  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .`;
+        filters += `\n  FILTER(CONTAINS(LCASE(STR(?rhName)),"${nm}"))`;
+      }
+    }
     if (license) {
       // dct:license è su dcat:Distribution, non su dcat:Dataset
       const licMap = {
@@ -1183,7 +1196,15 @@ async function loadAcCache() {
       ?d a dcat:Dataset .
       ?d dct:publisher ?pub . ?pub foaf:name ?pubName .
     } GROUP BY ?pubName ORDER BY DESC(?count) LIMIT 300`);
-  acCache = rows.map(r => ({ name: val(r,'pubName'), count: parseInt(val(r,'count')) }));
+  // Deduplica per identifier IPA, tieni il nome più frequente
+  const byId = new Map();
+  rows.forEach(r => {
+    const id = val(r,'identifier');
+    const n  = val(r,'name');
+    const c  = parseInt(val(r,'count')||'0');
+    if (!byId.has(id) || c > byId.get(id).count) byId.set(id, { name: n, identifier: id, count: c });
+  });
+  acCache = [...byId.values()].sort((a,b) => b.count - a.count);
   return acCache;
 }
 
@@ -1206,9 +1227,9 @@ async function acPublisher(q) {
   }, 250);
 }
 
-function selectPub(name, uri) {
+function selectPub(name, identifier) {
   document.getElementById('advPub').value = name;
-  document.getElementById('advPub').dataset.uri = uri;
+  document.getElementById('advPub').dataset.identifier = identifier || '';
   document.getElementById('acList').style.display = 'none';
 }
 
