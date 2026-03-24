@@ -449,6 +449,51 @@ header{
   }
   .load-more-orgs:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
 
+
+  /* Ricerca amministrazioni nella sidebar */
+  .sidebar-search {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .sidebar-search input {
+    width: 100%;
+    padding: 6px 10px 6px 28px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .sidebar-search input:focus {
+    border-color: var(--primary);
+    background: white;
+  }
+  .sidebar-search .search-icon {
+    position: absolute;
+    left: 8px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--text3);
+    pointer-events: none;
+  }
+  .sidebar-search .ac-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0; right: 0;
+    z-index: 9999;
+    background: white;
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius);
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    display: none;
+  }
+  .sidebar-search .ac-dropdown.open { display: block; }
+
 </style>
 </head>
 <body>
@@ -462,7 +507,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.15</div>
+  <div class="header-badge">v2026.03.24.17</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -507,8 +552,14 @@ header{
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-label">Cataloghi</div>
-      <div id="orgList"><div style="font-size:12px;color:var(--text3)">Caricamento…</div></div>
+      <div class="sidebar-label">Amministrazioni</div>
+          <div class="sidebar-search">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="orgSearch" placeholder="Cerca amministrazione…"
+                   oninput="filterOrgs(this.value)" autocomplete="off" />
+            <div class="ac-dropdown" id="orgAcList"></div>
+          </div>
+          <div id="orgList"><div style="font-size:12px;color:var(--text3)">Caricamento…</div></div>
     </div>
   </aside>
 
@@ -685,7 +736,7 @@ async function runCombinedQuery(offset=0) {
   const parts = [];
   if (state.keywords)  parts.push('"' + state.keywords + '"');
   if (state.theme)     parts.push('tema:' + state.theme.label);
-  if (state.publisher) parts.push('🗂️ ' + (state.publisherLabel || state.publisher));
+  if (state.publisher) parts.push('🏛️ ' + (state.publisherLabel || state.publisher));
   const label = parts.join(' · ');
 
   if (offset === 0) addMsg('🔎 <strong>' + label + '</strong>', true);
@@ -697,20 +748,19 @@ async function runCombinedQuery(offset=0) {
     var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
     if (state.theme)
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
-
-    // URI catalogo → tripla dcat:dataset
-    // Nome stringa → filtro su rightsHolder foaf:name
     if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
-    if (state.publisher && state.publisherType === 'name')
-      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
+    if (state.publisher && (state.publisherType === 'identifier' || state.publisherType === 'name'))
+      triples += "  ?d dct:rightsHolder ?rh .\n";
 
     var filters = "  " + LANG_FILTER + "\n";
     if (state.keywords)
       filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
+    if (state.publisher && state.publisherType === 'identifier')
+      filters += '  FILTER(EXISTS { ?rh dct:identifier "' + state.publisher.replace(/"/g,'') + '" })\n';
     if (state.publisher && state.publisherType === 'name') {
-      var pl = state.publisher.toLowerCase().replace(/"/g, '');
-      filters += "  FILTER(CONTAINS(LCASE(STR(?rhName)),\"" + pl + "\"))\n";
+      var pl = state.publisher.toLowerCase().replace(/"/g,'');
+      filters += '  FILTER(CONTAINS(LCASE(STR(?rh)),"' + pl + '"))\n';
     }
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1004,21 +1054,34 @@ async function searchPublisher(pubName) {
 }
 
 
-async function searchCatalog(catalogUri, catalogTitle) {
-  if (state.publisher === catalogUri) {
-    state.publisher = null;
-    state.publisherLabel = null;
+async function searchByIdentifier(identifier, name) {
+  // Toggle
+  if (state.publisher === identifier) {
+    state.publisher = null; state.publisherLabel = null; state.publisherType = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
     updateActiveBar();
     return;
   }
-  // Valida URI: salta URI malformati con # nel path
-  try { new URL(catalogUri); } catch(e) {
-    addMsg('<div class="error-msg">⚠️ URI catalogo non valido: ' + catalogUri + '</div>');
+  state.publisher = identifier;
+  state.publisherLabel = name;
+  state.publisherType = 'identifier';
+  document.querySelectorAll('.org-item').forEach(i=>{
+    i.classList.toggle('selected', i.dataset.publisher === identifier);
+  });
+  updateActiveBar();
+  closeSidebarMobile();
+  runCombinedQuery(0);
+}
+
+async function searchCatalog(catalogUri, catalogTitle) {
+  if (catalogUri.includes('#')) {
+    addMsg('<div class="error-msg">⚠️ URI catalogo non supportato: ' + catalogTitle + '</div>');
     return;
   }
-  if (catalogUri.includes('#')) {
-    addMsg('<div class="error-msg">⚠️ URI catalogo non supportato (contiene #): ' + catalogTitle + '</div>');
+  if (state.publisher === catalogUri) {
+    state.publisher = null; state.publisherLabel = null; state.publisherType = null;
+    document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
+    updateActiveBar();
     return;
   }
   state.publisher = catalogUri;
@@ -1244,10 +1307,7 @@ function selectPub(name, identifier) {
   document.getElementById('acList').style.display = 'none';
 }
 
-document.addEventListener('click', e => {
-  if (!e.target.closest('.autocomplete-wrap'))
-    document.getElementById('acList').style.display = 'none';
-});
+
 
 
 // ── MOBILE SIDEBAR ───────────────────────────────────────────────────────
@@ -1309,15 +1369,17 @@ function buildCombinedQuery(s, offset) {
     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
   if (s.publisher && s.publisherType === 'uri')
     triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
-  if (s.publisher && s.publisherType === 'name')
-    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
+  if (s.publisher && (s.publisherType === 'identifier' || s.publisherType === 'name'))
+    triples += "  ?d dct:rightsHolder ?rh .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
+  if (s.publisher && s.publisherType === 'identifier')
+    filters += '  FILTER(EXISTS { ?rh dct:identifier "' + s.publisher.replace(/"/g,'') + '" })\n';
   if (s.publisher && s.publisherType === 'name') {
-    var pl = s.publisher.toLowerCase().replace(/"/g, '');
-    filters += "  FILTER(CONTAINS(LCASE(STR(?rhName)),\"" + pl + "\"))\n";
+    var pl = s.publisher.toLowerCase().replace(/"/g,'');
+    filters += '  FILTER(CONTAINS(LCASE(STR(?rh)),"' + pl + '"))\n';
   }
 
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1368,38 +1430,47 @@ async function loadOrgs(offset=0) {
   if (orgLoading) return;
   orgLoading = true;
   try {
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      SELECT DISTINCT ?catalog ?title WHERE {
-        ?catalog a dcat:Catalog .
-        ?catalog dct:title ?title .
-        FILTER(LANG(?title)='it'||LANG(?title)='')
-      } ORDER BY ?title LIMIT ${ORG_PAGE} OFFSET ${offset}`);
+    const rows = await sparql(
+      "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+      "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+      "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+      "SELECT ?name ?identifier (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+      "  ?d a dcat:Dataset .\n" +
+      "  ?d dct:rightsHolder ?rh .\n" +
+      "  ?rh foaf:name ?name .\n" +
+      "  ?rh dct:identifier ?identifier .\n" +
+      "} GROUP BY ?name ?identifier ORDER BY DESC(?count) LIMIT " + ORG_PAGE + " OFFSET " + offset
+    );
+
+    // Deduplica per identifier, tieni nome più frequente
+    const byId = new Map();
+    rows.forEach(r => {
+      const id = val(r,'identifier'), n = val(r,'name'), c = parseInt(val(r,'count')||'0');
+      if (!byId.has(id) || c > byId.get(id).count) byId.set(id, { name:n, identifier:id, count:c });
+    });
+    const orgs = [...byId.values()];
 
     const list = document.getElementById('orgList');
     const prevBtn = list.querySelector('.load-more-orgs');
     if (prevBtn) prevBtn.remove();
 
-    const fragment = rows.map(r => {
-      const title   = val(r,'title');
-      const catalog = val(r,'catalog');
-      return `<div class="org-item" data-publisher="${catalog}" onclick="searchCatalog('${catalog.replace(/'/g,"\\'")}','${title.replace(/'/g,"\\'")}')">
-        <div class="org-dot"></div>
-        <span title="${catalog}">${title}</span>
-      </div>`;
-    }).join('');
+    const fragment = orgs.map(o =>
+      '<div class="org-item" data-publisher="' + o.identifier + '" onclick="searchByIdentifier(\'' +
+        o.identifier.replace(/'/g,"\'") + '\',\'' + o.name.replace(/'/g,"\'") + '\')">' +
+      '<div class="org-dot"></div>' +
+      '<span>' + o.name + '</span>' +
+      '<span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">' +
+        parseInt(o.count).toLocaleString('it') + '</span>' +
+      '</div>'
+    ).join('');
 
-    if (offset === 0) {
-      list.innerHTML = fragment;
-    } else {
-      list.insertAdjacentHTML('beforeend', fragment);
-    }
+    if (offset === 0) list.innerHTML = fragment;
+    else list.insertAdjacentHTML('beforeend', fragment);
 
     if (rows.length >= ORG_PAGE) {
       const btn = document.createElement('button');
       btn.className = 'load-more-orgs';
-      btn.textContent = '↓ Altri cataloghi…';
+      btn.textContent = '↓ Altre amministrazioni…';
       btn.onclick = () => { orgOffset += ORG_PAGE; loadOrgs(orgOffset); };
       list.appendChild(btn);
     }
@@ -1410,6 +1481,66 @@ async function loadOrgs(offset=0) {
   }
   orgLoading = false;
 }
+
+
+// ── RICERCA SIDEBAR AMMINISTRAZIONI ──────────────────────────────────────
+let orgSearchTimer = null;
+
+async function filterOrgs(q) {
+  clearTimeout(orgSearchTimer);
+  const dropdown = document.getElementById('orgAcList');
+  if (!q || q.length < 2) {
+    dropdown.classList.remove('open');
+    dropdown.innerHTML = '';
+    return;
+  }
+  orgSearchTimer = setTimeout(async () => {
+    const data = await loadAcCache();
+    const ql = q.toLowerCase();
+    const matches = data.filter(d =>
+      d.name.toLowerCase().includes(ql) ||
+      (d.identifier||'').toLowerCase().includes(ql)
+    ).slice(0, 12);
+
+    if (!matches.length) {
+      dropdown.classList.remove('open');
+      return;
+    }
+
+    dropdown.innerHTML = matches.map(m => {
+      const safeName = m.name.replace(/'/g, "\\'");
+      const safeId   = (m.identifier||'').replace(/'/g, "\\'");
+      return '<div class="ac-item" onclick="selectOrgFromSearch(\'' + safeName + '\',\'' + safeId + '\')">' +
+        '<span>' + m.name +
+          ' <span style="color:var(--text3);font-family:var(--mono);font-size:10px">[' + (m.identifier||'') + ']</span>' +
+        '</span>' +
+        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
+        '</div>';
+    }).join('');
+    dropdown.classList.add('open');
+  }, 200);
+}
+
+function selectOrgFromSearch(name, identifier) {
+  // Chiudi dropdown e pulisci input
+  document.getElementById('orgSearch').value = name;
+  document.getElementById('orgAcList').classList.remove('open');
+  document.getElementById('orgAcList').innerHTML = '';
+  // Seleziona l'amministrazione
+  searchByIdentifier(identifier, name);
+}
+
+// Chiudi dropdown se click fuori
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.sidebar-search')) {
+    const dd = document.getElementById('orgAcList');
+    if (dd) { dd.classList.remove('open'); }
+  }
+  if (!e.target.closest('.autocomplete-wrap')) {
+    const al = document.getElementById('acList');
+    if (al) al.style.display = 'none';
+  }
+});
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 loadOrgs();
