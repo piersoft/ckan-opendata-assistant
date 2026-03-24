@@ -427,6 +427,27 @@ header{
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
 
+
+  /* Carica altri risultati */
+  .load-more-btn {
+    width:100%;padding:10px;margin-top:4px;
+    border:2px dashed var(--border-dark);border-radius:var(--radius);
+    background:transparent;color:var(--text3);font-family:var(--font);
+    font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;
+    letter-spacing:.03em;
+  }
+  .load-more-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
+  .load-more-btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* Carica altri org sidebar */
+  .load-more-orgs {
+    width:100%;padding:7px;margin-top:4px;
+    border:1px dashed var(--border-dark);border-radius:var(--radius);
+    background:transparent;color:var(--text3);font-family:var(--font);
+    font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;
+  }
+  .load-more-orgs:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
+
 </style>
 </head>
 <body>
@@ -440,7 +461,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.2</div>
+  <div class="header-badge">v2026.03.24.4</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -485,7 +506,7 @@ header{
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-label">Publisher principali</div>
+      <div class="sidebar-label">Cataloghi</div>
       <div id="orgList"><div style="font-size:12px;color:var(--text3)">Caricamento…</div></div>
     </div>
   </aside>
@@ -534,8 +555,8 @@ header{
           </select>
         </div>
         <div class="adv-field autocomplete-wrap">
-          <label>Publisher</label>
-          <input type="text" id="advPub" placeholder="es. Regione Puglia, ISTAT…"
+          <label>Catalogo</label>
+          <input type="text" id="advPub" placeholder="es. Open Data Bari, Regione Puglia…"
                  oninput="acPublisher(this.value)" autocomplete="off" />
           <div class="autocomplete-list" id="acList" style="display:none"></div>
         </div>
@@ -602,13 +623,19 @@ const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/
 const FT_BASE    = 'http://publications.europa.eu/resource/authority/file-type/';
 const LICENSE_BASE = 'http://publications.europa.eu/resource/authority/licence/';
 const PAGE_SIZE = 8;
+const ORG_PAGE  = 15;  // organizzazioni per pagina
+
+// stato paginazione risultati
+let lastQuery = null; // { type, params, offset, label }
+
 
 
 // ── STATO FILTRI MULTIPLI ─────────────────────────────────────────────────
 const state = {
-  keywords: null,   // stringa libera
-  theme: null,      // { code, label }
-  publisher: null,  // stringa
+  keywords: null,      // stringa libera
+  theme: null,         // { code, label }
+  publisher: null,     // URI catalogo
+  publisherLabel: null // titolo catalogo
 };
 
 function updateActiveBar() {
@@ -617,7 +644,7 @@ function updateActiveBar() {
   const entries = [];
   if (state.keywords)  entries.push({ key:'keywords',  label:'🔍 ' + state.keywords });
   if (state.theme)     entries.push({ key:'theme',     label:'🗂️ ' + state.theme.label });
-  if (state.publisher) entries.push({ key:'publisher', label:'🏢 ' + state.publisher });
+  if (state.publisher) entries.push({ key:'publisher', label:'🗂️ ' + (state.publisherLabel || state.publisher) });
 
   if (!entries.length) {
     bar.classList.remove('visible');
@@ -637,13 +664,14 @@ function removeFilter(key) {
   if (key === 'theme') document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   if (key === 'keywords') document.getElementById('searchInput').value = '';
   if (key === 'publisher') {
+    state.publisherLabel = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   }
   updateActiveBar();
 }
 
 function clearAllFilters() {
-  state.keywords = null; state.theme = null; state.publisher = null;
+  state.keywords = null; state.theme = null; state.publisher = null; state.publisherLabel = null;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
@@ -651,7 +679,7 @@ function clearAllFilters() {
   updateActiveBar();
 }
 
-async function runCombinedQuery() {
+async function runCombinedQuery(offset=0) {
   const parts = [];
   if (state.keywords)  parts.push(`"${state.keywords}"`);
   if (state.theme)     parts.push(`tema:${state.theme.label}`);
@@ -661,6 +689,7 @@ async function runCombinedQuery() {
   addMsg(`🔎 <strong>${label}</strong>`, true);
   addTyping();
   setBusy(true);
+  lastQuery = { type:'combined', params:{ state: JSON.parse(JSON.stringify(state)) }, offset, label };
 
   try {
     // Costruisci triple
@@ -692,7 +721,7 @@ async function runCombinedQuery() {
         OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
         OPTIONAL { ?d dct:modified ?modified }
         ${filters}
-      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE}`);
+      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
     removeTyping();
     renderResults(rows, label);
   } catch(e) {
@@ -750,13 +779,17 @@ function fmtLabel(uri) {
 function shortDate(iso) { return iso ? iso.slice(0,10) : ''; }
 
 // ── RENDER RESULTS ────────────────────────────────────────────────────────
-function renderResults(rows, label, countQuery) {
-  if (!rows.length) {
+function renderResults(rows, label, append=false) {
+  if (!rows.length && !append) {
     addMsg(`<div class="no-results"><div class="icon">🔎</div>Nessun dataset trovato per <strong>"${label}"</strong>.</div>`);
     return;
   }
+  if (!rows.length && append) {
+    addMsg(`<div class="no-results">✅ Nessun altro risultato disponibile.</div>`);
+    return;
+  }
 
-  // Deduplica per URI dataset
+  // Deduplica per URI
   const seen = new Set();
   const unique = [];
   for (const r of rows) {
@@ -764,19 +797,24 @@ function renderResults(rows, label, countQuery) {
     if (!seen.has(d)) { seen.add(d); unique.push(r); }
   }
 
-  let html = `<div class="results-container">
-    <div class="results-header">
+  const hasMore = unique.length >= PAGE_SIZE;
+  const currentOffset = lastQuery ? lastQuery.offset : 0;
+
+  let html = `<div class="results-container">`;
+  if (!append) {
+    html += `<div class="results-header">
       <span>Risultati per <strong>"${label}"</strong></span>
-      <span class="results-count">${unique.length}${unique.length===PAGE_SIZE?'+':''} dataset</span>
+      <span class="results-count">${unique.length}${hasMore?'+':''} dataset</span>
     </div>`;
+  }
 
   unique.forEach(r => {
-    const title   = val(r,'title');
-    const org     = val(r,'pubName');
-    const notes   = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
-    const fmt     = fmtLabel(val(r,'format'));
+    const title    = val(r,'title');
+    const org      = val(r,'pubName');
+    const notes    = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
+    const fmt      = fmtLabel(val(r,'format'));
     const modified = shortDate(val(r,'modified'));
-    const dUri    = val(r,'d');
+    const dUri     = val(r,'d');
 
     html += `<div class="dataset-card" onclick="showDataset('${dUri.replace(/'/g,"\\'")}','${title.replace(/'/g,"\\'")}','${org.replace(/'/g,"\\'")}')">
       <div class="dataset-title">${title}</div>
@@ -789,9 +827,20 @@ function renderResults(rows, label, countQuery) {
     </div>`;
   });
 
-  html += `<div class="action-chips">
-    <span class="action-chip" onclick="addMsg('💡 Clicca su un dataset per vedere descrizione completa e risorse.')">💡 Come funziona?</span>
-  </div></div>`;
+  if (hasMore) {
+    const nextOffset = currentOffset + PAGE_SIZE;
+    html += `<button class="load-more-btn" onclick="loadMoreResults(${nextOffset})">
+      ↓ Carica altri risultati (offset ${nextOffset})
+    </button>`;
+  }
+
+  if (!append) {
+    html += `<div class="action-chips">
+      <span class="action-chip" onclick="addMsg('💡 Clicca su un dataset per vedere descrizione completa e risorse.')">💡 Come funziona?</span>
+    </div>`;
+  }
+
+  html += `</div>`;
   addMsg(html);
 }
 
@@ -908,9 +957,8 @@ function quickSearch(term) {
     .catch(e=>{ removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); setBusy(false); });
 }
 
-async function searchByKeyword(q) {
-  // Ogni parola viene cercata nel titolo OPPURE nel publisher (OR)
-  // così "rifiuti puglia" trova dataset con "rifiuti" nel titolo e "puglia" nel publisher
+async function searchByKeyword(q, offset=0) {
+  lastQuery = { type:'keyword', params:{ q }, offset, label:q };
   const words = q.trim().split(/\s+/);
   const filter = words.map(w => {
     const wl = w.toLowerCase().replace(/"/g,'');
@@ -968,6 +1016,23 @@ async function searchPublisher(pubName) {
   closeSidebarMobile();
 }
 
+
+async function searchCatalog(catalogUri, catalogTitle) {
+  if (state.publisher === catalogUri) {
+    state.publisher = null;
+    document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
+    updateActiveBar();
+    return;
+  }
+  state.publisher = catalogUri;
+  state.publisherLabel = catalogTitle;
+  document.querySelectorAll('.org-item').forEach(i=>{
+    i.classList.toggle('selected', i.dataset.publisher === catalogUri);
+  });
+  updateActiveBar();
+  closeSidebarMobile();
+  runCombinedQuery(0);
+}
 // ── ULTIMI AGGIORNATI ─────────────────────────────────────────────────────
 async function loadRecent() {
   clearAllFilters();
@@ -1087,7 +1152,7 @@ async function doAdvSearch() {
         OPTIONAL { ?d dcat:distribution ?distOpt . ?distOpt dct:format ?format }
         OPTIONAL { ?d dct:modified ?modified }
         ${filters}
-      } ORDER BY ${orderBy} LIMIT ${PAGE_SIZE}`);
+      } ORDER BY ${orderBy} LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
     removeTyping();
     renderResults(rows, label);
   } catch(e) {
@@ -1096,31 +1161,7 @@ async function doAdvSearch() {
   }
 }
 
-// ── SIDEBAR PUBLISHER ─────────────────────────────────────────────────────
-async function loadOrgs() {
-  try {
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      SELECT ?pubName (COUNT(DISTINCT ?d) AS ?count) WHERE {
-        ?d a dcat:Dataset .
-        ?d dct:publisher ?pub . ?pub foaf:name ?pubName .
-      } GROUP BY ?pubName ORDER BY DESC(?count) LIMIT 15`);
-    const list = document.getElementById('orgList');
-    list.innerHTML = rows.map(r => {
-      const name = val(r,'pubName');
-      const count = val(r,'count');
-      return `<div class="org-item" data-publisher="${name}" onclick="searchPublisher('${name.replace(/'/g,"\\'")}')">
-        <div class="org-dot"></div>
-        <span>${name}</span>
-        <span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${parseInt(count).toLocaleString('it')}</span>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    document.getElementById('orgList').innerHTML = '<div style="font-size:11px;color:var(--text3)">Non disponibile</div>';
-  }
-}
+
 
 // ── INPUT KEYBOARD ────────────────────────────────────────────────────────
 document.getElementById('searchInput').addEventListener('keydown', e => {
@@ -1165,8 +1206,9 @@ async function acPublisher(q) {
   }, 250);
 }
 
-function selectPub(name) {
+function selectPub(name, uri) {
   document.getElementById('advPub').value = name;
+  document.getElementById('advPub').dataset.uri = uri;
   document.getElementById('acList').style.display = 'none';
 }
 
@@ -1191,6 +1233,122 @@ function closeSidebarMobile() {
     document.getElementById('sidebarOverlay').classList.remove('open');
     document.body.style.overflow = '';
   }
+}
+
+
+// ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
+async function loadMoreResults(offset) {
+  if (!lastQuery) return;
+  addTyping();
+  setBusy(true);
+  try {
+    let rows = [];
+    if (lastQuery.type === 'keyword') {
+      const q = lastQuery.params.q;
+      const words = q.trim().split(/\s+/);
+      const filter = words.map(w => {
+        const wl = w.toLowerCase().replace(/"/g,'');
+        return `(CONTAINS(LCASE(?title),"${wl}")||CONTAINS(LCASE(STR(?pubName)),"${wl}")||CONTAINS(LCASE(STR(?description)),"${wl}"))`;
+      }).join(' && ');
+      rows = await sparql(`
+        PREFIX dcat: <http://www.w3.org/ns/dcat#>
+        PREFIX dct:  <http://purl.org/dc/terms/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
+          ?d a dcat:Dataset . ?d dct:title ?title .
+          OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
+          OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
+          OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
+          OPTIONAL { ?d dct:modified ?modified }
+          FILTER(LANG(?title)='it'||LANG(?title)='')
+          FILTER(${filter})
+        } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+    } else if (lastQuery.type === 'combined') {
+      // Ricostruisce la stessa query combined con nuovo offset
+      const s = lastQuery.params.state;
+      let triples = `?d a dcat:Dataset . ?d dct:title ?title .`;
+      if (s.theme) triples += `\n  ?d dcat:theme <${THEME_BASE}${s.theme.code}> .`;
+      let filters = `FILTER(LANG(?title)='it'||LANG(?title)='')`;
+      if (s.keywords) {
+        const words = s.keywords.split(/\s+/);
+        const kf = words.map(w=>`(CONTAINS(LCASE(?title),"${w.toLowerCase().replace(/"/g,'')}")||CONTAINS(LCASE(STR(?pubName)),"${w.toLowerCase().replace(/"/g,'')}")||CONTAINS(LCASE(STR(?description)),"${w.toLowerCase().replace(/"/g,'')}"))` ).join(' && ');
+        filters += `\n  FILTER(${kf})`;
+      }
+      if (s.publisher) {
+        triples += `\n  <${s.publisher}> dcat:dataset ?d .`;
+      }
+      rows = await sparql(`
+        PREFIX dcat: <http://www.w3.org/ns/dcat#>
+        PREFIX dct:  <http://purl.org/dc/terms/>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
+          ${triples}
+          OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
+          OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
+          OPTIONAL { ?d dcat:distribution ?distOpt . ?distOpt dct:format ?format }
+          OPTIONAL { ?d dct:modified ?modified }
+          ${filters}
+        } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+    }
+    lastQuery.offset = offset;
+    removeTyping();
+    renderResults(rows, lastQuery.label, true);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+  setBusy(false);
+}
+
+// ── PAGINAZIONE ORGANIZZAZIONI ────────────────────────────────────────────
+let orgOffset = 0;
+let orgLoading = false;
+
+async function loadOrgs(offset=0) {
+  if (orgLoading) return;
+  orgLoading = true;
+  try {
+    const rows = await sparql(`
+      PREFIX dcat: <http://www.w3.org/ns/dcat#>
+      PREFIX dct:  <http://purl.org/dc/terms/>
+      SELECT DISTINCT ?catalog ?title WHERE {
+        ?catalog a dcat:Catalog .
+        ?catalog dct:title ?title .
+        FILTER(LANG(?title)='it'||LANG(?title)='')
+      } ORDER BY ?title LIMIT ${ORG_PAGE} OFFSET ${offset}`);
+
+    const list = document.getElementById('orgList');
+    const prevBtn = list.querySelector('.load-more-orgs');
+    if (prevBtn) prevBtn.remove();
+
+    const fragment = rows.map(r => {
+      const title   = val(r,'title');
+      const catalog = val(r,'catalog');
+      return `<div class="org-item" data-publisher="${catalog}" onclick="searchCatalog('${catalog.replace(/'/g,"\\'")}','${title.replace(/'/g,"\\'")}')">
+        <div class="org-dot"></div>
+        <span title="${catalog}">${title}</span>
+      </div>`;
+    }).join('');
+
+    if (offset === 0) {
+      list.innerHTML = fragment;
+    } else {
+      list.insertAdjacentHTML('beforeend', fragment);
+    }
+
+    if (rows.length >= ORG_PAGE) {
+      const btn = document.createElement('button');
+      btn.className = 'load-more-orgs';
+      btn.textContent = '↓ Altri cataloghi…';
+      btn.onclick = () => { orgOffset += ORG_PAGE; loadOrgs(orgOffset); };
+      list.appendChild(btn);
+    }
+    orgOffset = offset;
+  } catch(e) {
+    if (offset === 0)
+      document.getElementById('orgList').innerHTML = '<div style="font-size:11px;color:var(--text3)">Non disponibile</div>';
+  }
+  orgLoading = false;
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
