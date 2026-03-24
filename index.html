@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.36</div>
+  <div class="header-badge">v2026.03.24.37</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1028,7 +1028,7 @@ async function showDataset(dUri, title, org) {
     var resHtml = dists.length
       ? dists.map(function(d) {
           var fmt = d.format.toUpperCase();
-          var canPreview = (fmt === 'CSV' || fmt === 'XLSX');
+          var canPreview = (fmt === 'CSV' || fmt === 'XLSX') && !(d.downloadURL||d.url||'').includes('dati.gov.it/sites/default');
           var pid = 'prev_' + Math.random().toString(36).slice(2);
           return '<div class="resource-item">' +
             '<div><div class="resource-name">' + d.title + '</div>' +
@@ -1438,7 +1438,8 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   }
 
   try {
-    const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(30000) });
+    const proxyUrl = CSV_PROXY + encodeURIComponent(resourceUrl);
+    const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(30000) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
     const fmt = format.toUpperCase();
