@@ -507,7 +507,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.19</div>
+  <div class="header-badge">v2026.03.24.20</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -675,6 +675,7 @@ const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/
 const FT_BASE    = 'http://publications.europa.eu/resource/authority/file-type/';
 const LICENSE_BASE = 'http://publications.europa.eu/resource/authority/licence/';
 const PAGE_SIZE = 8;
+const FETCH_SIZE = PAGE_SIZE * 4; // fetch più righe per compensare duplicati SPARQL
 const ORG_PAGE  = 15;  // organizzazioni per pagina
 
 // stato paginazione risultati
@@ -770,7 +771,7 @@ async function runCombinedQuery(offset=0) {
       "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
       "  OPTIONAL { ?d dct:modified ?modified }\n" +
       filters +
-      "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+      "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 
     const rows = await sparql(q);
     removeTyping();
@@ -1114,7 +1115,7 @@ async function loadRecent(offset=0) {
         OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
         OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
         FILTER(LANG(?title)='it'||LANG(?title)='')
-      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+      } ORDER BY DESC(?modified) LIMIT ${FETCH_SIZE} OFFSET ${offset}`);
     lastQuery = { type:'recent', params:{}, offset, label:'ultimi aggiornati' };
     removeTyping();
     renderResults(rows, 'ultimi aggiornati', offset > 0);
@@ -1223,7 +1224,7 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
     "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
-    "} ORDER BY " + orderBy + " LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+    "} ORDER BY " + orderBy + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 
@@ -1337,7 +1338,7 @@ function buildKeywordQuery(words, offset) {
     SPARQL_OPTIONALS +
     "  " + LANG_FILTER + "\n" +
     "  FILTER(" + kwFilter(words) + ")\n" +
-    "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildRecentQuery(offset) {
@@ -1345,7 +1346,7 @@ function buildRecentQuery(offset) {
     "  ?d a dcat:Dataset . ?d dct:title ?title . ?d dct:modified ?modified .\n" +
     SPARQL_OPTIONALS +
     "  " + LANG_FILTER + "\n" +
-    "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildCombinedQuery(s, offset) {
@@ -1372,7 +1373,7 @@ function buildCombinedQuery(s, offset) {
     "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
-    "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 async function loadMoreResults(offset) {
