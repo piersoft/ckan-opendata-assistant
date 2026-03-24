@@ -462,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.13</div>
+  <div class="header-badge">v2026.03.24.14</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -955,27 +955,9 @@ function quickSearch(term) {
 async function searchByKeyword(q, offset=0) {
   lastQuery = { type:'keyword', params:{ q }, offset, label:q };
   const words = q.trim().split(/\s+/);
-  const filter = words.map(w => {
-    const wl = w.toLowerCase().replace(/"/g,'');
-    return `(CONTAINS(LCASE(?title), "${wl}") || CONTAINS(LCASE(STR(?pubName)), "${wl}") || CONTAINS(LCASE(STR(?description)), "${wl}"))`;
-  }).join(' && ');
-
-  const rows = await sparql(`
-    PREFIX dcat: <http://www.w3.org/ns/dcat#>
-    PREFIX dct:  <http://purl.org/dc/terms/>
-    PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-    SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-      ?d a dcat:Dataset .
-      ?d dct:title ?title .
-      OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-      OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-      OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
-      OPTIONAL { ?d dct:modified ?modified }
-      FILTER(LANG(?title)='it'||LANG(?title)='')
-      FILTER(${filter})
-    } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE}`);
+  const rows = await sparql(buildKeywordQuery(words, offset));
   removeTyping();
-  renderResults(rows, q);
+  renderResults(rows, q, offset > 0);
 }
 
 // ── TEMA ──────────────────────────────────────────────────────────────────
@@ -1015,8 +997,18 @@ async function searchPublisher(pubName) {
 async function searchCatalog(catalogUri, catalogTitle) {
   if (state.publisher === catalogUri) {
     state.publisher = null;
+    state.publisherLabel = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
     updateActiveBar();
+    return;
+  }
+  // Valida URI: salta URI malformati con # nel path
+  try { new URL(catalogUri); } catch(e) {
+    addMsg('<div class="error-msg">⚠️ URI catalogo non valido: ' + catalogUri + '</div>');
+    return;
+  }
+  if (catalogUri.includes('#')) {
+    addMsg('<div class="error-msg">⚠️ URI catalogo non supportato (contiene #): ' + catalogTitle + '</div>');
     return;
   }
   state.publisher = catalogUri;
