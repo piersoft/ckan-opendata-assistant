@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.26</div>
+  <div class="header-badge">v2026.03.24.27</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1453,14 +1453,32 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
 }
 
 function parseCSV(text) {
-  var lines = text.split('\n');
+  var lines = text.split('\n').filter(function(l){ return l.trim(); });
+  if (!lines.length) return [];
+
+  // Auto-detect separatore: conta occorrenze di ; , \t nella prima riga
+  var first = lines[0];
+  var counts = {
+    ';': (first.match(/;/g)||[]).length,
+    ',': (first.match(/,/g)||[]).length,
+    '\t': (first.match(/\t/g)||[]).length
+  };
+  var sep = ';'; // default italiano
+  var max = 0;
+  Object.keys(counts).forEach(function(k){ if (counts[k] > max) { max = counts[k]; sep = k; } });
+
   return lines.map(function(line) {
     var result = [], current = '', inQuotes = false;
     for (var i = 0; i < line.length; i++) {
       var ch = line[i];
-      if (ch === '"') { inQuotes = !inQuotes; }
-      else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-      else { current += ch; }
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === sep && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
     }
     result.push(current.trim());
     return result;
