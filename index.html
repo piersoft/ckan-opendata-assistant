@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.21</div>
+  <div class="header-badge">v2026.03.24.22</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1396,42 +1396,42 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   if (!container) return;
   container.innerHTML = '<div class="data-preview-loading">⏳ Caricamento anteprima…</div>';
 
-  // 1. Prova DataStore su dati.gov.it
-  try {
-    const dsUrl = 'https://www.dati.gov.it/opendata/api/3/action/datastore_search?resource_id=' +
-      encodeURIComponent(resourceId) + '&limit=10';
-    const resp = await fetch(dsUrl);
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.success && data.result && data.result.records && data.result.records.length > 0) {
-        renderPreviewTable(container, data.result.fields, data.result.records, data.result.total);
-        return;
-      }
-    }
-  } catch(e) {}
-
-  // 2. Se CSV diretto e CORS permette, fetch raw
-  if (format && format.toUpperCase() === 'CSV' && resourceUrl) {
-    try {
-      const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(8000) });
-      if (resp.ok) {
-        const text = await resp.text();
-        const rows = parseCSV(text, 11);
-        if (rows.length > 1) {
-          const headers = rows[0].map(function(h,i){ return { id: h||'col'+i }; });
-          const records = rows.slice(1).map(function(r){
-            var obj = {};
-            headers.forEach(function(h,i){ obj[h.id] = r[i]||''; });
-            return obj;
-          });
-          renderPreviewTable(container, headers, records, '?');
-          return;
-        }
-      }
-    } catch(e) {}
+  // Fetch diretto — funziona solo se il server ha CORS aperto
+  if (!resourceUrl) {
+    container.innerHTML = '<div class="data-preview-loading">⚠️ URL risorsa non disponibile.</div>';
+    return;
   }
 
-  container.innerHTML = '<div class="data-preview-loading" style="color:var(--text3)">⚠️ Anteprima non disponibile per questa risorsa.</div>';
+  try {
+    const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    const fmt = format.toUpperCase();
+    if (fmt === 'CSV') {
+      const text = await resp.text();
+      const rows = parseCSV(text, 12);
+      if (rows.length < 2) throw new Error('Nessun dato nel file');
+      const headers = rows[0].map(function(h,i){ return { id: h.trim() || ('col'+i) }; });
+      const records = rows.slice(1, 11).map(function(r){
+        var obj = {};
+        headers.forEach(function(h,i){ obj[h.id] = (r[i]||'').trim(); });
+        return obj;
+      });
+      renderPreviewTable(container, headers, records, '?');
+
+    } else if (fmt === 'XLSX') {
+      // XLSX richiede SheetJS — non disponibile qui, mostra link diretto
+      container.innerHTML =
+        '<div class="data-preview-loading">📥 <a href="' + resourceUrl + '" target="_blank" ' +
+        'style="color:var(--primary);font-weight:600">Scarica il file XLSX</a> per visualizzarlo.</div>';
+    }
+  } catch(e) {
+    container.innerHTML =
+      '<div class="data-preview-loading">⚠️ Anteprima non disponibile' +
+      (e.message ? ': ' + e.message : '') +
+      '. <a href="' + resourceUrl + '" target="_blank" ' +
+      'style="color:var(--primary);font-weight:600">Apri direttamente ↗</a></div>';
+  }
 }
 
 function parseCSV(text, maxRows) {
