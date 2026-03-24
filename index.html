@@ -408,7 +408,7 @@ function removeFilter(key) {
   if (key === 'theme') document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   if (key === 'keywords') document.getElementById('searchInput').value = '';
   if (key === 'publisher') {
-    document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
+    document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   }
   updateActiveBar();
 }
@@ -417,6 +417,7 @@ function clearAllFilters() {
   state.keywords = null; state.theme = null; state.publisher = null;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   document.getElementById('searchInput').value = '';
   updateActiveBar();
 }
@@ -729,9 +730,8 @@ async function searchPublisher(pubName) {
     return;
   }
   state.publisher = pubName;
-  document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   document.querySelectorAll('.org-item').forEach(i=>{
-    if (i.textContent.includes(pubName.split(' ')[0])) i.classList.add('selected');
+    i.classList.toggle('selected', i.dataset.publisher === pubName);
   });
   updateActiveBar();
   runCombinedQuery();
@@ -880,7 +880,7 @@ async function loadOrgs() {
     list.innerHTML = rows.map(r => {
       const name = val(r,'pubName');
       const count = val(r,'count');
-      return `<div class="org-item" onclick="searchPublisher('${name.replace(/'/g,"\\'")}')">
+      return `<div class="org-item" data-publisher="${name}" onclick="searchPublisher('${name.replace(/'/g,"\\'")}')">
         <div class="org-dot"></div>
         <span>${name}</span>
         <span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${parseInt(count).toLocaleString('it')}</span>
