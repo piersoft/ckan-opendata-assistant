@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.59</div>
+  <div class="header-badge">v2026.03.24.60</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -876,7 +876,7 @@ async function runCombinedQuery(offset=0) {
     if (state.keywords)
       filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
     if (state.publisher && state.publisherType === 'name')
-      filters += '  FILTER(STR(?rhName) = "' + state.publisher + '")\n';
+      filters += '  FILTER(CONTAINS(LCASE(STR(?rhName)),LCASE("' + state.publisher.trim() + '")))\n';
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
@@ -1667,7 +1667,7 @@ function buildCombinedQuery(s, offset) {
   if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
   if (s.publisher && s.publisherType === 'name')
-    filters += '  FILTER(STR(?rhName) = "' + s.publisher + '")\n';
+    filters += '  FILTER(CONTAINS(LCASE(STR(?rhName)),LCASE("' + s.publisher.trim() + '")))\n';
 
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
