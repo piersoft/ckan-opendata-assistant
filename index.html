@@ -462,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.7</div>
+  <div class="header-badge">v2026.03.24.8</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1265,79 +1265,80 @@ function closeSidebarMobile() {
 
 
 // ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
+const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
+const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+  "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+  "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
+const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {\n";
+const SPARQL_OPTIONALS =
+  "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+  "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+  "  OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }\n" +
+  "  OPTIONAL { ?d dct:modified ?modified }\n";
+
+function kwFilter(words) {
+  return words.map(function(w) {
+    var wl = w.toLowerCase().replace(/"/g, "");
+    return "(CONTAINS(LCASE(?title),\"" + wl + "\")||CONTAINS(LCASE(STR(?pubName)),\"" + wl + "\")||CONTAINS(LCASE(STR(?description)),\"" + wl + "\"))";
+  }).join(" && ");
+}
+
+function buildKeywordQuery(words, offset) {
+  return SPARQL_PREFIXES + SPARQL_SELECT +
+    "  ?d a dcat:Dataset . ?d dct:title ?title .\n" +
+    SPARQL_OPTIONALS +
+    "  " + LANG_FILTER + "\n" +
+    "  FILTER(" + kwFilter(words) + ")\n" +
+    "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+}
+
+function buildRecentQuery(offset) {
+  return SPARQL_PREFIXES + SPARQL_SELECT +
+    "  ?d a dcat:Dataset . ?d dct:title ?title . ?d dct:modified ?modified .\n" +
+    SPARQL_OPTIONALS +
+    "  " + LANG_FILTER + "\n" +
+    "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+}
+
+function buildCombinedQuery(s, offset) {
+  var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
+  if (s.theme)     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
+  if (s.publisher) triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
+  var filters = "  " + LANG_FILTER + "\n";
+  if (s.keywords) {
+    var kf = kwFilter(s.keywords.split(/\s+/));
+    filters += "  FILTER(" + kf + ")\n";
+  }
+  return SPARQL_PREFIXES + SPARQL_SELECT + triples +
+    "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+    "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+    "  OPTIONAL { ?d dcat:distribution ?distOpt . ?distOpt dct:format ?format }\n" +
+    "  OPTIONAL { ?d dct:modified ?modified }\n" +
+    filters +
+    "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+}
+
 async function loadMoreResults(offset) {
   if (!lastQuery) return;
   addTyping();
   setBusy(true);
   try {
     let rows = [];
-    if (lastQuery.type === 'recent') {
-      rows = await sparql(`
-        PREFIX dcat: <http://www.w3.org/ns/dcat#>
-        PREFIX dct:  <http://purl.org/dc/terms/>
-        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-        SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-          ?d a dcat:Dataset .
-          ?d dct:title ?title .
-          ?d dct:modified ?modified .
-          OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-          OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-          OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
-          FILTER(LANG(?title)='it'||LANG(?title)='')
-        } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}\`);
-    } else if (lastQuery.type === 'keyword') {
-      const q = lastQuery.params.q;
-      const words = q.trim().split(/\s+/);
-      const filter = words.map(w => {
-        const wl = w.toLowerCase().replace(/"/g,'');
-        return `(CONTAINS(LCASE(?title),"${wl}")||CONTAINS(LCASE(STR(?pubName)),"${wl}")||CONTAINS(LCASE(STR(?description)),"${wl}"))`;
-      }).join(' && ');
-      rows = await sparql(`
-        PREFIX dcat: <http://www.w3.org/ns/dcat#>
-        PREFIX dct:  <http://purl.org/dc/terms/>
-        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-        SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-          ?d a dcat:Dataset . ?d dct:title ?title .
-          OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-          OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-          OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
-          OPTIONAL { ?d dct:modified ?modified }
-          FILTER(LANG(?title)='it'||LANG(?title)='')
-          FILTER(${filter})
-        } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
-    } else if (lastQuery.type === 'combined') {
-      // Ricostruisce la stessa query combined con nuovo offset
-      const s = lastQuery.params.state;
-      let triples = `?d a dcat:Dataset . ?d dct:title ?title .`;
-      if (s.theme) triples += `\n  ?d dcat:theme <${THEME_BASE}${s.theme.code}> .`;
-      let filters = `FILTER(LANG(?title)='it'||LANG(?title)='')`;
-      if (s.keywords) {
-        const words = s.keywords.split(/\s+/);
-        const kf = words.map(w=>`(CONTAINS(LCASE(?title),"${w.toLowerCase().replace(/"/g,'')}")||CONTAINS(LCASE(STR(?pubName)),"${w.toLowerCase().replace(/"/g,'')}")||CONTAINS(LCASE(STR(?description)),"${w.toLowerCase().replace(/"/g,'')}"))` ).join(' && ');
-        filters += `\n  FILTER(${kf})`;
-      }
-      if (s.publisher) {
-        triples += `\n  <${s.publisher}> dcat:dataset ?d .`;
-      }
-      rows = await sparql(`
-        PREFIX dcat: <http://www.w3.org/ns/dcat#>
-        PREFIX dct:  <http://purl.org/dc/terms/>
-        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-        SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-          ${triples}
-          OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-          OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-          OPTIONAL { ?d dcat:distribution ?distOpt . ?distOpt dct:format ?format }
-          OPTIONAL { ?d dct:modified ?modified }
-          ${filters}
-        } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+    const lq = lastQuery;
+    if (lq.type === 'recent') {
+      rows = await sparql(buildRecentQuery(offset));
+    } else if (lq.type === 'keyword') {
+      const words = lq.params.q.trim().split(/\s+/);
+      rows = await sparql(buildKeywordQuery(words, offset));
+    } else if (lq.type === 'combined') {
+      rows = await sparql(buildCombinedQuery(lq.params.state, offset));
     }
     lastQuery.offset = offset;
     removeTyping();
-    renderResults(rows, lastQuery.label, true);
+    renderResults(rows, lq.label, true);
   } catch(e) {
     removeTyping();
-    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
   }
   setBusy(false);
 }
