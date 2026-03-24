@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.28</div>
+  <div class="header-badge">v2026.03.24.29</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1357,22 +1357,41 @@ async function acPublisher(q) {
   const list = document.getElementById('acList');
   if (!q || q.length < 2) { list.style.display = 'none'; return; }
   acTimer = setTimeout(async () => {
-    const data = await loadAcCache();
-    const ql = q.toLowerCase();
-    // cerca su nome E su identifier IPA
-    const matches = data.filter(d =>
-      d.name.toLowerCase().includes(ql) || (d.identifier||'').toLowerCase().includes(ql)
-    ).slice(0, 10);
-    if (!matches.length) { list.style.display = 'none'; return; }
-    list.innerHTML = matches.map(m => {
-      const safeName = m.name.replace(/'/g,"\\'");
-      return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
-        '<span>' + m.name + '</span>' +
-        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
-        '</div>';
-    }).join('');
-    list.style.display = 'block';
-  }, 250);
+    try {
+      const ql = q.toLowerCase().replace(/"/g, '');
+      const rows = await sparql(
+        "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+        "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+        "  ?d a dcat:Dataset .\n" +
+        "  ?d dct:rightsHolder ?rh .\n" +
+        "  ?rh foaf:name ?name .\n" +
+        '  FILTER(CONTAINS(LCASE(STR(?name)),"' + ql + '"))\n' +
+        "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 10"
+      );
+
+      if (!rows.length) { list.style.display = 'none'; return; }
+
+      const seen = new Set();
+      const unique = [];
+      rows.forEach(r => {
+        const n = val(r,'name').trim();
+        if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); unique.push({ name: n, count: parseInt(val(r,'count')||'0') }); }
+      });
+
+      list.innerHTML = unique.map(m => {
+        const safeName = m.name.replace(/'/g, "\'");
+        return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
+          '<span>' + m.name + '</span>' +
+          '<span class="ac-count">' + m.count.toLocaleString('it') + ' ds</span>' +
+          '</div>';
+      }).join('');
+      list.style.display = 'block';
+    } catch(e) {
+      list.style.display = 'none';
+    }
+  }, 350);
 }
 
 function selectPub(name) {
@@ -1663,28 +1682,45 @@ async function filterOrgs(q) {
     return;
   }
   orgSearchTimer = setTimeout(async () => {
-    const data = await loadAcCache();
-    const ql = q.toLowerCase();
-    const matches = data.filter(d =>
-      d.name.toLowerCase().includes(ql) ||
-      (d.identifier||'').toLowerCase().includes(ql)
-    ).slice(0, 12);
+    try {
+      const ql = q.toLowerCase().replace(/"/g, '');
+      const rows = await sparql(
+        "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+        "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+        "  ?d a dcat:Dataset .\n" +
+        "  ?d dct:rightsHolder ?rh .\n" +
+        "  ?rh foaf:name ?name .\n" +
+        '  FILTER(CONTAINS(LCASE(STR(?name)),"' + ql + '"))\n' +
+        "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 12"
+      );
 
-    if (!matches.length) {
+      if (!rows.length) {
+        dropdown.classList.remove('open');
+        return;
+      }
+
+      // Deduplica per nome normalizzato
+      const seen = new Set();
+      const unique = [];
+      rows.forEach(r => {
+        const n = val(r,'name').trim();
+        if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); unique.push({ name: n, count: parseInt(val(r,'count')||'0') }); }
+      });
+
+      dropdown.innerHTML = unique.map(m => {
+        const safeName = m.name.replace(/'/g, "\'");
+        return '<div class="ac-item" onclick="selectOrgFromSearch(\'' + safeName + '\')">' +
+          '<span>' + m.name + '</span>' +
+          '<span class="ac-count">' + m.count.toLocaleString('it') + ' ds</span>' +
+          '</div>';
+      }).join('');
+      dropdown.classList.add('open');
+    } catch(e) {
       dropdown.classList.remove('open');
-      return;
     }
-
-    dropdown.innerHTML = matches.map(m => {
-      const safeName = m.name.replace(/'/g, "\\'");
-      const safeId   = (m.identifier||'').replace(/'/g, "\\'");
-      return '<div class="ac-item" onclick="selectOrgFromSearch(\'' + safeName + '\',\'' + safeId + '\')">' +
-        '<span>' + m.name + '</span>' +
-        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
-        '</div>';
-    }).join('');
-    dropdown.classList.add('open');
-  }, 200);
+  }, 350);
 }
 
 function selectOrgFromSearch(name) {
