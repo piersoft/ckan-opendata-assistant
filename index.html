@@ -462,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.11</div>
+  <div class="header-badge">v2026.03.24.13</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -682,52 +682,46 @@ function clearAllFilters() {
 
 async function runCombinedQuery(offset=0) {
   const parts = [];
-  if (state.keywords)  parts.push(`"${state.keywords}"`);
-  if (state.theme)     parts.push(`tema:${state.theme.label}`);
-  if (state.publisher) parts.push(`publisher:${state.publisher}`);
+  if (state.keywords)  parts.push('"' + state.keywords + '"');
+  if (state.theme)     parts.push('tema:' + state.theme.label);
+  if (state.publisher) parts.push('🗂️ ' + (state.publisherLabel || state.publisher));
   const label = parts.join(' · ');
 
-  addMsg(`🔎 <strong>${label}</strong>`, true);
+  if (offset === 0) addMsg('🔎 <strong>' + label + '</strong>', true);
   addTyping();
   setBusy(true);
   lastQuery = { type:'combined', params:{ state: JSON.parse(JSON.stringify(state)) }, offset, label };
 
   try {
-    // Costruisci triple
-    let triples = `?d a dcat:Dataset . ?d dct:title ?title .`;
-    if (state.theme) triples += `\n  ?d dcat:theme <${THEME_BASE}${state.theme.code}> .`;
+    var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
+    if (state.theme)
+      triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
+    if (state.publisher)
+      triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
 
-    let filters = `FILTER(LANG(?title)='it'||LANG(?title)='')`;
+    var filters = "  " + LANG_FILTER + "\n";
     if (state.keywords) {
-      const words = state.keywords.split(/\s+/);
-      const kf = words.map(w => {
-        const wl = w.toLowerCase().replace(/"/g,'');
-        return `(CONTAINS(LCASE(?title),"${wl}")||CONTAINS(LCASE(STR(?pubName)),"${wl}")||CONTAINS(LCASE(STR(?description)),"${wl}"))`;
-      }).join(' && ');
-      filters += `\n  FILTER(${kf})`;
-    }
-    if (state.publisher) {
-      const pl = state.publisher.toLowerCase().replace(/"/g,'');
-      filters += `\n  FILTER(CONTAINS(LCASE(STR(?pubName)),"${pl}"))`;
+      var kf = kwFilter(state.keywords.split(/\s+/));
+      filters += "  FILTER(" + kf + ")\n";
     }
 
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-        ${triples}
-        OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-        OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-        OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
-        OPTIONAL { ?d dct:modified ?modified }
-        ${filters}
-      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+    var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+      "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+      "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+      "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n" +
+      triples +
+      "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+      "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+      "  OPTIONAL { ?d dct:modified ?modified }\n" +
+      filters +
+      "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
+
+    const rows = await sparql(q);
     removeTyping();
-    renderResults(rows, label);
+    renderResults(rows, label, offset > 0);
   } catch(e) {
     removeTyping();
-    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
   }
   setBusy(false);
 }
@@ -1079,6 +1073,7 @@ async function doAdvSearch() {
   const q       = document.getElementById('advQ').value.trim();
   const theme   = document.getElementById('advTheme').value;
   const pub     = document.getElementById('advPub').value.trim();
+  const identifier = document.getElementById('advPub').dataset.identifier || '';
   const format  = document.getElementById('advFormat').value;
   const license = document.getElementById('advLicense').value;
   const sort    = document.getElementById('advSort').value;
@@ -1088,91 +1083,94 @@ async function doAdvSearch() {
   }
 
   const parts = [];
-  if (q)       parts.push(`"${q}"`);
-  if (theme)   parts.push(`tema:${theme}`);
-  if (pub)     parts.push(`amm:${pub}`);
-  if (format)  parts.push(`formato:${format}`);
-  if (license) parts.push(`licenza:${license}`);
+  if (q)       parts.push('"' + q + '"');
+  if (theme)   parts.push('tema:' + theme);
+  if (pub)     parts.push('amm:' + pub + (identifier ? ' [' + identifier + ']' : ''));
+  if (format)  parts.push('formato:' + format);
+  if (license) parts.push('licenza:' + license);
   const label = parts.join(' · ');
 
-  addMsg(`🔎 Ricerca avanzata: <strong>${label}</strong>`, true);
+  addMsg('🔎 Ricerca avanzata: <strong>' + label + '</strong>', true);
   addTyping();
 
-  // Chiudi pannello
   document.getElementById('advPanel').classList.remove('open');
   document.getElementById('advToggle').classList.remove('open');
   document.getElementById('advToggle').textContent = '⚙️ Avanzata';
 
-  // Tag filtri attivi
   const fc = document.getElementById('advActiveFilters');
-  fc.innerHTML = parts.map(p=>`<span class="filter-tag">${p}</span>`).join('');
+  fc.innerHTML = parts.map(function(p){ return '<span class="filter-tag">' + p + '</span>'; }).join('');
+
+  // Salva per paginazione
+  lastQuery = {
+    type: 'advanced',
+    params: { q, theme, pub, identifier, format, license, sort },
+    offset: 0,
+    label: label
+  };
 
   try {
-    // Costruisci triple SPARQL
-    let triples = `?d a dcat:Dataset . ?d dct:title ?title .`;
-    if (theme)  triples += `\n  ?d dcat:theme <${THEME_BASE}${theme}> .`;
-    if (format) triples += `\n  ?d dcat:distribution ?dist . ?dist dct:format <${FT_BASE}${format}> .`;
-    // Filtro rightsHolder
-    const rhPart = fqParts.find(p => p.startsWith('EXACT_RIGHTSHOLDER:') || p.startsWith('CONTAINS_RIGHTSHOLDER:'));
-    if (rhPart) {
-      fqParts.splice(fqParts.indexOf(rhPart), 1); // rimuovi dal array
-      if (rhPart.startsWith('EXACT_RIGHTSHOLDER:')) {
-        const ipa = rhPart.replace('EXACT_RIGHTSHOLDER:','');
-        triples += `\n  ?d dct:rightsHolder ?rh . ?rh dct:identifier "${ipa}" .`;
-      } else {
-        const nm = rhPart.replace('CONTAINS_RIGHTSHOLDER:','').toLowerCase().replace(/"/g,'');
-        triples += `\n  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .`;
-        filters += `\n  FILTER(CONTAINS(LCASE(STR(?rhName)),"${nm}"))`;
-      }
-    }
-    if (license) {
-      // dct:license è su dcat:Distribution, non su dcat:Dataset
-      const licMap = {
-        CC_BY:   ['https://creativecommons.org/licenses/by/4.0/',
-                  'http://creativecommons.org/licenses/by/4.0/',
-                  'http://creativecommons.org/licenses/by/4.0/it/',
-                  'https://creativecommons.org/licenses/by/4.0/legalcode',
-                  'http://www.opendefinition.org/licenses/cc-by'],
-        CC_ZERO: ['https://creativecommons.org/publicdomain/zero/1.0/',
-                  'http://creativecommons.org/publicdomain/zero/1.0/'],
-        IODL:    ['https://www.dati.gov.it/content/italian-open-data-license-v20',
-                  'http://www.dati.gov.it/iodl/2.0/'],
-        CC_BYSA: ['https://creativecommons.org/licenses/by-sa/4.0/',
-                  'http://creativecommons.org/licenses/by-sa/4.0/']
-      };
-      const uris = licMap[license] || [];
-      const values = uris.map(u=>`<${u}>`).join(' ');
-      // La licenza va filtrata sulla distribuzione
-      triples += `\n  ?d dcat:distribution ?distLic . ?distLic dct:license ?lic . VALUES ?lic { ${values} }`;
-    }
-
-    let filters = `FILTER(LANG(?title)='it'||LANG(?title)='')`;
-    if (q) {
-      const words = q.split(/\s+/).map(w=>`CONTAINS(LCASE(?title),"${w.toLowerCase().replace(/"/g,'')}")`);
-      filters += `\n  FILTER(${words.join(' && ')})`;
-    }
-    if (pub) filters += `\n  FILTER(CONTAINS(LCASE(STR(?pubName)),"${pub.toLowerCase().replace(/"/g,'')}"))`;
-
-    const orderBy = sort === 'title' ? '?title' : 'DESC(?modified)';
-
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-        ${triples}
-        OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-        OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-        OPTIONAL { ?d dcat:distribution ?distOpt . ?distOpt dct:format ?format }
-        OPTIONAL { ?d dct:modified ?modified }
-        ${filters}
-      } ORDER BY ${orderBy} LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
+    const rows = await sparql(buildAdvQuery(q, theme, pub, identifier, format, license, sort, 0));
     removeTyping();
-    renderResults(rows, label);
+    renderResults(rows, label, false);
   } catch(e) {
     removeTyping();
-    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
   }
+}
+
+function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset) {
+  var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
+
+  if (theme)
+    triples += "  ?d dcat:theme <" + THEME_BASE + theme + "> .\n";
+
+  if (format)
+    triples += "  ?d dcat:distribution ?distFmt . ?distFmt dct:format <" + FT_BASE + format + "> .\n";
+
+  if (license) {
+    var licMap = {
+      CC_BY:   ['https://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/it/','https://creativecommons.org/licenses/by/4.0/legalcode'],
+      CC_ZERO: ['https://creativecommons.org/publicdomain/zero/1.0/','http://creativecommons.org/publicdomain/zero/1.0/'],
+      IODL:    ['https://www.dati.gov.it/content/italian-open-data-license-v20','http://www.dati.gov.it/iodl/2.0/'],
+      CC_BYSA: ['https://creativecommons.org/licenses/by-sa/4.0/']
+    };
+    var licUris = (licMap[license] || []).map(function(u){ return '<' + u + '>'; }).join(' ');
+    if (licUris)
+      triples += "  ?d dcat:distribution ?distLic . ?distLic dct:license ?lic . VALUES ?lic { " + licUris + " }\n";
+  }
+
+  if (pub) {
+    if (identifier) {
+      triples += "  ?d dct:rightsHolder ?rh . ?rh dct:identifier \"" + identifier + "\" .\n";
+    } else {
+      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
+    }
+  }
+
+  var filters = "  " + LANG_FILTER + "\n";
+
+  if (q) {
+    var words = q.trim().split(/\s+/);
+    filters += "  FILTER(" + kwFilter(words) + ")\n";
+  }
+
+  if (pub && !identifier) {
+    var pl = pub.toLowerCase().replace(/"/g, '');
+    filters += "  FILTER(CONTAINS(LCASE(STR(?rhName)),\"" + pl + "\"))\n";
+  }
+
+  var orderBy = (sort === 'title') ? '?title' : 'DESC(?modified)';
+
+  return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+    "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+    "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+    "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n" +
+    triples +
+    "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+    "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+    "  OPTIONAL { ?d dct:modified ?modified }\n" +
+    filters +
+    "} ORDER BY " + orderBy + " LIMIT " + PAGE_SIZE + " OFFSET " + offset;
 }
 
 
@@ -1308,10 +1306,13 @@ function buildCombinedQuery(s, offset) {
   if (s.publisher) triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
   var filters = "  " + LANG_FILTER + "\n";
   if (s.keywords) {
-    var kf = kwFilter(s.keywords.split(/\s+/));
-    filters += "  FILTER(" + kf + ")\n";
+    filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
   }
-  return SPARQL_PREFIXES + SPARQL_SELECT + triples +
+  return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+    "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+    "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+    "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n" +
+    triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
@@ -1326,7 +1327,10 @@ async function loadMoreResults(offset) {
   try {
     let rows = [];
     const lq = lastQuery;
-    if (lq.type === 'recent') {
+    if (lq.type === 'advanced') {
+      const p = lq.params;
+      rows = await sparql(buildAdvQuery(p.q, p.theme, p.pub, p.identifier, p.format, p.license, p.sort, offset));
+    } else if (lq.type === 'recent') {
       rows = await sparql(buildRecentQuery(offset));
     } else if (lq.type === 'keyword') {
       const words = lq.params.q.trim().split(/\s+/);
