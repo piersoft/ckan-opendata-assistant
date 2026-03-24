@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.41</div>
+  <div class="header-badge">v2026.03.24.42</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1027,7 +1027,11 @@ async function showDataset(dUri, title, org) {
     var resHtml = dists.length
       ? dists.map(function(d) {
           var fmt = d.format.toUpperCase();
-          var canPreview = (fmt === 'CSV' || fmt === 'XLSX') && !(d.downloadURL||d.url||'').includes('dati.gov.it/sites/default');
+          var previewUrl = d.downloadURL || '';
+          var canPreview = (fmt === 'CSV' || fmt === 'XLSX') &&
+            !previewUrl.includes('dati.gov.it/sites/default') &&
+            !previewUrl.includes('dati.gov.it/view-dataset') &&
+            !previewUrl.includes('dati.gov.it/dataset');
           var pid = 'prev_' + Math.random().toString(36).slice(2);
           return '<div class="resource-item">' +
             '<div><div class="resource-name">' + d.title + '</div>' +
