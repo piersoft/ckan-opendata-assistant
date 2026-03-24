@@ -1035,7 +1035,7 @@ async function showDataset(dUri, title, org) {
             (d.format ? '<div style="font-size:10px;color:var(--text3);font-family:var(--mono)">' + d.format + '</div>' : '') +
             '</div>' +
             '<div style="display:flex;gap:6px">' +
-            (canPreview ? '<button class="res-btn preview" onclick="tryDataPreview(\'' + (d.resourceId||'').replace(/'/g,"\'") + '\',\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'' + fmt + '\',\'' + pid + '\')" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
+            (canPreview ? '<button class="res-btn preview" data-resid="' + (d.resourceId||'').replace(/"/g,'&quot;') + '" data-url="' + (d.downloadURL||d.url).replace(/"/g,'&quot;') + '" data-fmt="' + fmt + '" data-pid="' + pid + '" onclick="previewFromBtn(this)" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
             '<button class="res-btn open" onclick="window.open(\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
             '</div>' +
             (canPreview ? '<div id="' + pid + '" style="grid-column:1/-1;width:100%;margin-top:4px"></div>' : '') +
@@ -1427,6 +1427,16 @@ function closeSidebarMobile() {
 
 
 // ── ANTEPRIMA DATI CSV/XLSX ───────────────────────────────────────────────
+
+function previewFromBtn(el) {
+  tryDataPreview(
+    el.dataset.resid || '',
+    el.dataset.url,
+    el.dataset.fmt,
+    el.dataset.pid
+  );
+}
+
 async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
