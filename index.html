@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.54</div>
+  <div class="header-badge">v2026.03.24.55</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -881,13 +881,13 @@ async function runCombinedQuery(offset=0) {
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
       "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-      "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
+      "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n" +
       triples +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
       (state.publisher && state.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
       "  OPTIONAL { ?d dct:modified ?modified }\n" +
       filters +
-      "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+      "} GROUP BY ?d ORDER BY DESC(MAX(?modified)) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 
     const rows = await sparql(q);
     removeTyping();
@@ -957,8 +957,14 @@ function renderResults(rows, label, append=false) {
     return;
   }
 
-  // Ogni riga è già unica per ?d grazie al GROUP BY nella query
-  const unique = rows;
+  // Dedup lato JS come safety net
+  const seenSet = new Set();
+  const unique = rows.filter(r => {
+    const d = val(r,'d');
+    if (seenSet.has(d)) return false;
+    seenSet.add(d);
+    return true;
+  });
 
   const hasMore = unique.length >= PAGE_SIZE;
   const currentOffset = lastQuery ? lastQuery.offset : 0;
@@ -1359,13 +1365,13 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
+    "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     (!pub ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
-    "} ORDER BY " + orderBy + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+    "} GROUP BY ?d ORDER BY " + orderBy.replace("?modified", "MAX(?modified)") + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 
@@ -1630,13 +1636,13 @@ function buildCombinedQuery(s, offset) {
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
+    "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     (s.publisher && s.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
-    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+    "} GROUP BY ?d ORDER BY DESC(MAX(?modified)) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 async function loadMoreResults(offset) {
