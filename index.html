@@ -1229,7 +1229,7 @@ async function searchOrg(orgName, orgTitle) {
   addTyping();
   try {
     const result = await ckanGet('package_search', {
-      fq: `owner_org:${orgName}`, rows: ROWS, sort: 'metadata_modified desc'
+      fq: `organization:${orgName}`, rows: ROWS, sort: 'metadata_modified desc'
     });
     removeTyping();
     renderResults(result, orgTitle);
