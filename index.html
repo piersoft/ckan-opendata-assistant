@@ -622,7 +622,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.44</div>
+  <div class="header-badge">v2026.03.24.45</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1576,12 +1576,11 @@ const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
   "PREFIX dct: <http://purl.org/dc/terms/>\n" +
   "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
-const SPARQL_SELECT = "SELECT ?d ?title (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n";
+const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n";
 const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
   "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
-const SPARQL_GROUPBY = "} GROUP BY ?d ?title ORDER BY DESC(MAX(?modified)) LIMIT ";
 
 function kwFilter(words) {
   return words.map(function(w) {
@@ -1598,7 +1597,7 @@ function buildKeywordQuery(words, offset) {
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
     "  FILTER(" + kwFilter(words) + ")\n" +
-    SPARQL_GROUPBY + FETCH_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildRecentQuery(offset) {
@@ -1608,7 +1607,7 @@ function buildRecentQuery(offset) {
     "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
-    SPARQL_GROUPBY + FETCH_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildCombinedQuery(s, offset) {
