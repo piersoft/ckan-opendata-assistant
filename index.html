@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistente Open Data · dati.gov.it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #ede9e1;
+    --border: #d6d0c4;
+    --accent: #1a3a5c;
+    --accent2: #c8401a;
+    --accent-light: #e8eef5;
+    --text: #1c1917;
+    --text2: #6b6560;
+    --text3: #9c9690;
+    --green: #1a6b42;
+    --green-light: #e6f4ec;
+    --tag-bg: #e8eef5;
+    --tag-text: #1a3a5c;
+    --chat-user: #1a3a5c;
+    --chat-bot: #ffffff;
+    --radius: 12px;
+    --radius-sm: 6px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--accent);
+    color: white;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 3px solid var(--accent2);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent2);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+    letter-spacing: 0.01em;
+  }
+  .header-subtitle {
+    font-size: 11px;
+    opacity: 0.6;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .header-badge {
+    font-size: 10px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 280px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  /* Quick actions */
+  .quick-btn {
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    line-height: 1.3;
+  }
+  .quick-btn:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .quick-btn .qicon {
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  /* Theme chips */
+  .theme-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text2);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .chip:hover, .chip.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  /* Org list */
+  .org-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 4px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text2);
+    transition: all 0.15s;
+    border-bottom: 1px solid var(--surface2);
+  }
+  .org-item:hover { color: var(--accent); background: var(--accent-light); padding-left: 8px; }
+  .org-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* CHAT AREA */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 5px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Welcome */
+  .welcome {
+    text-align: center;
+    padding: 32px 16px;
+    animation: fadeUp 0.5s ease;
+  }
+  .welcome-icon {
+    width: 56px; height: 56px;
+    background: var(--accent);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    margin: 0 auto 16px;
+    box-shadow: var(--shadow);
+  }
+  .welcome h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .welcome p {
+    font-size: 14px;
+    color: var(--text2);
+    max-width: 420px;
+    margin: 0 auto 20px;
+    line-height: 1.6;
+  }
+  .welcome-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .welcome-chip {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--accent);
+    background: white;
+    color: var(--accent);
+    transition: all 0.15s;
+  }
+  .welcome-chip:hover {
+    background: var(--accent);
+    color: white;
+  }
+
+  /* Messaggi */
+  .msg { display: flex; gap: 10px; align-items: flex-start; animation: fadeUp 0.3s ease; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .msg.bot .msg-avatar { background: var(--accent); color: white; }
+  .msg.user .msg-avatar { background: var(--accent2); color: white; }
+  .msg-bubble {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .msg.bot .msg-bubble { background: var(--chat-bot); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .msg.user .msg-bubble { background: var(--chat-user); color: white; }
+
+  /* Risultati dataset */
+  .results-container { width: 100%; }
+  .results-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--text3);
+  }
+  .results-count {
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .dataset-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .dataset-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px rgba(26,58,92,0.12);
+    transform: translateY(-1px);
+  }
+  .dataset-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .dataset-org {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+  .dataset-notes {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .dataset-meta {
+    display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .meta-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    font-weight: 500;
+    font-family: 'DM Mono', monospace;
+  }
+  .meta-tag.format { background: #fef3e6; color: #a0540a; }
+  .meta-tag.date { background: var(--green-light); color: var(--green); }
+
+  /* Detail panel */
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    width: 100%;
+  }
+  .detail-header {
+    background: var(--accent);
+    color: white;
+    padding: 14px 16px;
+  }
+  .detail-header h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .detail-header .detail-org {
+    font-size: 11px;
+    opacity: 0.7;
+    font-family: 'DM Mono', monospace;
+  }
+  .detail-body { padding: 14px 16px; }
+  .detail-desc {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .resources-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .resource-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .resource-item:hover { background: var(--accent-light); border-color: var(--accent); }
+  .resource-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .resource-actions { display: flex; gap: 6px; }
+  .res-btn {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .res-btn.preview {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: white;
+  }
+  .res-btn.preview:hover { background: var(--accent); color: white; }
+  .res-btn.open {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: white;
+  }
+  .res-btn.open:hover { background: var(--accent2); color: white; }
+
+  /* DataStore preview */
+  .datastore-preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    width: 100%;
+  }
+  .datastore-header {
+    background: var(--green);
+    color: white;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-wrapper { overflow-x: auto; max-height: 280px; overflow-y: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  th {
+    background: var(--surface2);
+    padding: 7px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--text);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+  }
+  tr:hover td { background: var(--accent-light); }
+
+  /* Azioni contestuali */
+  .action-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 10px;
+  }
+  .action-chip {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: white;
+    color: var(--text2);
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .action-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex; gap: 4px; align-items: center;
+    padding: 12px 16px;
+    background: var(--chat-bot);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: fit-content;
+  }
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--text3);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* INPUT BAR */
+  .input-bar {
+    padding: 12px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    padding: 8px 16px;
+    gap: 8px;
+    transition: border-color 0.15s;
+  }
+  .input-wrap:focus-within {
+    border-color: var(--accent);
+    background: white;
+  }
+  #searchInput {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+  }
+  #searchInput::placeholder { color: var(--text3); }
+  .send-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-size: 16px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { background: var(--accent2); transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Errore */
+  .error-msg {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Scrollbar sidebar */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .no-results {
+    text-align: center;
+    padding: 24px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .no-results .icon { font-size: 32px; margin-bottom: 8px; }
+
+  /* ── RICERCA AVANZATA ─────────────────────────────── */
+  .adv-panel {
+    background: var(--surface);
+    border-top: 3px solid var(--accent);
+    padding: 0;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s ease, padding 0.2s ease;
+    flex-shrink: 0;
+  }
+  .adv-panel.open {
+    max-height: 320px;
+    padding: 16px 24px;
+  }
+  .adv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .adv-field label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 5px;
+  }
+  .adv-field input, .adv-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .adv-field input:focus, .adv-field select:focus {
+    border-color: var(--accent);
+    background: white;
+  }
+  .adv-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .adv-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    align-items: center;
+  }
+  .adv-btn {
+    padding: 9px 20px;
+    border-radius: 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+  }
+  .adv-btn.primary {
+    background: var(--accent);
+    color: white;
+  }
+  .adv-btn.primary:hover { background: var(--accent2); }
+  .adv-btn.secondary {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .adv-btn.secondary:hover { background: var(--border); }
+  .adv-toggle {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: white;
+    color: var(--text2);
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px;
+    flex-shrink: 0;
+  }
+  .adv-toggle:hover, .adv-toggle.open {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: #fef3ef;
+  }
+  .adv-active-filters {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 10px;
+  }
+  .filter-tag {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: var(--accent-light);
+    border: 1px solid #bcd0e8;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .filter-tag button {
+    background: none; border: none; cursor: pointer;
+    color: var(--accent); font-size: 13px; line-height: 1;
+    padding: 0; margin: 0;
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-icon">🏛️</div>
+    <div>
+      <div class="header-title">Assistente Open Data</div>
+      <div class="header-subtitle">dati.gov.it · Catalogo Nazionale</div>
+    </div>
+  </div>
+  <div class="header-badge">No AI · Locale</div>
+</header>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Azioni rapide</div>
+      <button class="quick-btn" onclick="quickSearch('ambiente')">
+        <span class="qicon">🌿</span> Dataset Ambiente
+      </button>
+      <button class="quick-btn" onclick="quickSearch('trasporti')">
+        <span class="qicon">🚌</span> Dataset Trasporti
+      </button>
+      <button class="quick-btn" onclick="quickSearch('salute')">
+        <span class="qicon">🏥</span> Dataset Salute
+      </button>
+      <button class="quick-btn" onclick="quickSearch('istruzione')">
+        <span class="qicon">🎓</span> Dataset Istruzione
+      </button>
+      <button class="quick-btn" onclick="quickSearch('lavoro')">
+        <span class="qicon">💼</span> Dataset Lavoro
+      </button>
+      <button class="quick-btn" onclick="loadRecent()">
+        <span class="qicon">🕐</span> Ultimi aggiornati
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Temi DCAT</div>
+      <div class="theme-chips" id="themeChips">
+        <span class="chip" onclick="searchTheme('ambiente','Ambiente')">🌍 Ambiente</span>
+        <span class="chip" onclick="searchTheme('trasporti','Trasporti')">🚗 Trasporti</span>
+        <span class="chip" onclick="searchTheme('salute','Salute')">❤️ Salute</span>
+        <span class="chip" onclick="searchTheme('scienza','Scienza')">🔬 Scienza</span>
+        <span class="chip" onclick="searchTheme('economia','Economia')">📈 Economia</span>
+        <span class="chip" onclick="searchTheme('giustizia','Giustizia')">⚖️ Giustizia</span>
+        <span class="chip" onclick="searchTheme('agricoltura','Agricoltura')">🌾 Agricoltura</span>
+        <span class="chip" onclick="searchTheme('energia','Energia')">⚡ Energia</span>
+        <span class="chip" onclick="searchTheme('governo','Governo')">🏛️ Governo</span>
+        <span class="chip" onclick="searchTheme('societa','Società')">👥 Società</span>
+        <span class="chip" onclick="searchTheme('cultura','Cultura')">🎭 Cultura</span>
+        <span class="chip" onclick="searchTheme('regioni','Regioni')">🗺️ Regioni</span>
+        <span class="chip" onclick="searchTheme('internazionali','Internazionali')">🌐 Internazionali</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Organizzazioni</div>
+      <div id="orgList">
+        <div style="font-size:12px;color:var(--text3);padding:4px 0;">Caricamento...</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CHAT -->
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcomeScreen">
+        <div class="welcome-icon">🔍</div>
+        <h2>Cosa stai cercando?</h2>
+        <p>Esplora il catalogo nazionale degli open data. Cerca per parola chiave, sfoglia per tema o organizzazione, visualizza i dettagli e anteprima dei dati.</p>
+        <div class="welcome-actions">
+          <span class="welcome-chip" onclick="quickSearch('defibrillatori')">🏥 Defibrillatori</span>
+          <span class="welcome-chip" onclick="quickSearch('qualità aria')">🌫️ Qualità aria</span>
+          <span class="welcome-chip" onclick="quickSearch('scuole')">🏫 Scuole</span>
+          <span class="welcome-chip" onclick="quickSearch('comuni')">🏘️ Comuni</span>
+          <span class="welcome-chip" onclick="quickSearch('rifiuti')">♻️ Rifiuti</span>
+          <span class="welcome-chip" onclick="quickSearch('covid')">💊 Covid</span>
+        </div>
+      </div>
+    </div>
+
+    
+  <!-- RICERCA AVANZATA -->
+  <div class="adv-panel" id="advPanel">
+    <div class="adv-grid">
+      <div class="adv-field">
+        <label>Parole chiave</label>
+        <input type="text" id="advQ" placeholder="es. qualità aria, ISTAT…" />
+      </div>
+      <div class="adv-field">
+        <label>Gruppo / Tema</label>
+        <select id="advGroup">
+          <option value="">— tutti i gruppi —</option>
+          <option value="ambiente">🌍 Ambiente</option>
+          <option value="trasporti">🚗 Trasporti</option>
+          <option value="salute">❤️ Salute</option>
+          <option value="scienza">🔬 Scienza</option>
+          <option value="economia">📈 Economia</option>
+          <option value="giustizia">⚖️ Giustizia</option>
+          <option value="agricoltura">🌾 Agricoltura</option>
+          <option value="energia">⚡ Energia</option>
+          <option value="governo">🏛️ Governo</option>
+          <option value="societa">👥 Società</option>
+          <option value="cultura">🎭 Cultura</option>
+          <option value="regioni">🗺️ Regioni</option>
+          <option value="internazionali">🌐 Internazionali</option>
+        </select>
+      </div>
+      <div class="adv-field">
+        <label>Organizzazione</label>
+        <select id="advOrg">
+          <option value="">— tutte le org —</option>
+        </select>
+      </div>
+    </div>
+    <div class="adv-row2">
+      <div class="adv-field">
+        <label>Formato risorsa</label>
+        <select id="advFormat">
+          <option value="">— tutti i formati —</option>
+          <option value="CSV">CSV</option>
+          <option value="JSON">JSON</option>
+          <option value="XML">XML</option>
+          <option value="SHP">SHP / Shapefile</option>
+          <option value="GeoJSON">GeoJSON</option>
+          <option value="RDF">RDF</option>
+          <option value="PDF">PDF</option>
+          <option value="XLSX">XLSX</option>
+          <option value="ODS">ODS</option>
+          <option value="WMS">WMS</option>
+          <option value="WFS">WFS</option>
+        </select>
+      </div>
+      <div class="adv-field">
+        <label>Licenza</label>
+        <select id="advLicense">
+          <option value="">— tutte le licenze —</option>
+          <option value="cc-by">CC BY</option>
+          <option value="cc-by-sa">CC BY-SA</option>
+          <option value="cc-zero">CC0 / Public Domain</option>
+          <option value="it-odbl">IODL 2.0</option>
+          <option value="other-open">Altra aperta</option>
+        </select>
+      </div>
+      <div class="adv-field">
+        <label>Ordina per</label>
+        <select id="advSort">
+          <option value="score desc">Rilevanza</option>
+          <option value="metadata_modified desc">Più recenti</option>
+          <option value="metadata_modified asc">Meno recenti</option>
+          <option value="name asc">Nome A→Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="adv-actions">
+      <button class="adv-btn primary" onclick="doAdvSearch()">🔍 Cerca</button>
+      <button class="adv-btn secondary" onclick="resetAdv()">✕ Reset</button>
+      <div id="advActiveFilters" class="adv-active-filters"></div>
+    </div>
+  </div>
+
+<div class="input-bar">
+      <div class="input-wrap">
+        <span style="font-size:16px;color:var(--text3)">🔍</span>
+        <input type="text" id="searchInput" placeholder="Cerca dataset… es. 'rifiuti Puglia' o 'ISTAT popolazione'" />
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="doSearch()">➤</button>
+      <button class="adv-toggle" id="advToggle" onclick="toggleAdv()">⚙️ Avanzata</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CKAN_BASE = 'https://www.dati.gov.it/opendata/api/3/action';
+const ROWS = 8;
+let currentDataset = null;
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+
+function addMsg(html, isUser = false) {
+  const welcome = document.getElementById('welcomeScreen');
+  if (welcome) welcome.remove();
+
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (isUser ? 'user' : 'bot');
+  div.innerHTML = `
+    <div class="msg-avatar">${isUser ? '👤' : '🏛️'}</div>
+    <div class="msg-bubble">${html}</div>
+  `;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="msg-avatar">🏛️</div><div class="typing"><span></span><span></span><span></span></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+async function ckanGet(action, params) {
+  const url = new URL(`${CKAN_BASE}/${action}`);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString());
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error?.message || 'Errore CKAN');
+  return data.result;
+}
+
+// ── RICERCA PRINCIPALE ─────────────────────────────────────────────────────
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('sendBtn').disabled = true;
+  addMsg(`🔍 <strong>${q}</strong>`, true);
+  addTyping();
+  try {
+    await searchDatasets(q);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ Errore nella ricerca: ${e.message}</div>`);
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+async function quickSearch(term) {
+  document.getElementById('searchInput').value = term;
+  doSearch();
+}
+
+async function searchTheme(theme, label) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  addMsg(`🗂️ Gruppo: <strong>${label}</strong>`, true);
+  addTyping();
+  try {
+    const result = await ckanGet('package_search', {
+      fq: `groups:${theme}`,
+      rows: ROWS,
+      sort: 'metadata_modified desc'
+    });
+    removeTyping();
+    renderResults(result, label);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+}
+
+async function searchDatasets(q, fq = '') {
+  const params = { q, rows: ROWS, sort: 'score desc, metadata_modified desc' };
+  if (fq) params.fq = fq;
+  const result = await ckanGet('package_search', params);
+  removeTyping();
+  renderResults(result, q);
+}
+
+function renderResults(result, label) {
+  const total = result.count;
+  const datasets = result.results;
+
+  if (total === 0) {
+    addMsg(`<div class="no-results"><div class="icon">🔎</div>Nessun dataset trovato per <strong>"${label}"</strong></div>`);
+    return;
+  }
+
+  let html = `
+    <div class="results-container">
+      <div class="results-header">
+        <span>Risultati per <strong>"${label}"</strong></span>
+        <span class="results-count">${total.toLocaleString('it')} dataset trovati</span>
+      </div>
+  `;
+
+  datasets.forEach(ds => {
+    const org = ds.organization?.title || ds.owner_org || '—';
+    const formats = [...new Set((ds.resources || []).map(r => r.format).filter(Boolean))].slice(0,3);
+    const modified = ds.metadata_modified ? ds.metadata_modified.slice(0,10) : '';
+    const notes = ds.notes ? ds.notes.replace(/<[^>]+>/g,'').trim() : 'Nessuna descrizione disponibile.';
+
+    html += `
+      <div class="dataset-card" onclick="showDataset('${ds.id}')">
+        <div class="dataset-title">${ds.title || ds.name}</div>
+        <div class="dataset-org">📌 ${org}</div>
+        <div class="dataset-notes">${notes}</div>
+        <div class="dataset-meta">
+          ${formats.map(f => `<span class="meta-tag format">${f}</span>`).join('')}
+          ${modified ? `<span class="meta-tag date">📅 ${modified}</span>` : ''}
+          <span class="meta-tag">${(ds.resources||[]).length} risorse</span>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+      <div class="action-chips">
+        <span class="action-chip" onclick="addMsg('ℹ️ Clicca su un dataset per vedere i dettagli e le risorse.', false)">💡 Come funziona?</span>
+      </div>
+    </div>
+  `;
+  addMsg(html);
+}
+
+// ── DETTAGLIO DATASET ──────────────────────────────────────────────────────
+
+async function showDataset(id) {
+  addMsg(`📂 Carico i dettagli del dataset…`, true);
+  addTyping();
+  try {
+    const ds = await ckanGet('package_show', { id });
+    removeTyping();
+    currentDataset = ds;
+    renderDatasetDetail(ds);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+}
+
+function renderDatasetDetail(ds) {
+  const org = ds.organization?.title || ds.owner_org || '—';
+  const notes = ds.notes ? ds.notes.replace(/<[^>]+>/g,'').trim() : 'Nessuna descrizione disponibile.';
+  const resources = ds.resources || [];
+
+  let resHtml = resources.length > 0
+    ? resources.map(r => `
+        <div class="resource-item">
+          <div>
+            <div class="resource-name">${r.name || r.format || 'Risorsa'}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${r.format || ''} · ${r.size ? (r.size/1024).toFixed(0)+' KB' : ''}</div>
+          </div>
+          <div class="resource-actions">
+            ${r.datastore_active ? `<button class="res-btn preview" onclick="previewResource('${r.id}','${(r.name||r.format||'dati').replace(/'/g,"\\'")}')">👁 Anteprima</button>` : ''}
+            <button class="res-btn open" onclick="window.open('${r.url}','_blank')">↗ Apri</button>
+          </div>
+        </div>
+      `).join('')
+    : '<div style="font-size:12px;color:var(--text3);">Nessuna risorsa disponibile.</div>';
+
+  const html = `
+    <div class="detail-panel">
+      <div class="detail-header">
+        <h3>${ds.title || ds.name}</h3>
+        <div class="detail-org">📌 ${org}</div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-desc">${notes.slice(0,400)}${notes.length>400?'…':''}</div>
+        <div class="resources-label">Risorse disponibili (${resources.length})</div>
+        ${resHtml}
+      </div>
+    </div>
+    <div class="action-chips">
+      <span class="action-chip" onclick="window.open('https://www.dati.gov.it/view-dataset/${ds.name}','_blank')">🔗 Apri su dati.gov.it</span>
+      <span class="action-chip" onclick="copyId('${ds.id}')">📋 Copia ID</span>
+      <span class="action-chip" onclick="showSimilar('${ds.title}')">🔄 Simili</span>
+    </div>
+  `;
+  addMsg(html);
+}
+
+function copyId(id) {
+  navigator.clipboard.writeText(id).then(() => {
+    addMsg(`✅ ID copiato: <code style="font-family:'DM Mono',monospace;background:var(--surface2);padding:2px 6px;border-radius:4px;">${id}</code>`);
+  });
+}
+
+function showSimilar(title) {
+  const words = title.split(' ').slice(0,2).join(' ');
+  quickSearch(words);
+}
+
+// ── ANTEPRIMA DATASTORE ────────────────────────────────────────────────────
+
+async function previewResource(resourceId, name) {
+  addMsg(`🗄️ Carico anteprima dati: <strong>${name}</strong>`, true);
+  addTyping();
+  try {
+    const result = await ckanGet('datastore_search', { resource_id: resourceId, limit: 20 });
+    removeTyping();
+    renderDatastorePreview(result, name);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ DataStore non disponibile per questa risorsa. Prova ad aprirla direttamente.</div>`);
+  }
+}
+
+function renderDatastorePreview(result, name) {
+  const fields = (result.fields || []).filter(f => f.id !== '_id');
+  const records = result.records || [];
+
+  if (records.length === 0) {
+    addMsg(`<div class="no-results"><div class="icon">📭</div>DataStore vuoto o non accessibile.</div>`);
+    return;
+  }
+
+  let rows = records.slice(0, 15).map(rec =>
+    `<tr>${fields.map(f => `<td title="${rec[f.id] ?? ''}">${String(rec[f.id] ?? '').slice(0,60)}</td>`).join('')}</tr>`
+  ).join('');
+
+  const html = `
+    <div class="datastore-preview">
+      <div class="datastore-header">
+        <span>📊 ${name}</span>
+        <span>${result.total?.toLocaleString('it') || '?'} record totali · mostrando 15</span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>${fields.map(f => `<th>${f.id}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="action-chips">
+      <span class="action-chip" onclick="loadMore('${currentDataset?.resources?.find(r=>r.datastore_active)?.id}','${name}',20)">📥 Carica altri 20</span>
+    </div>
+  `;
+  addMsg(html);
+}
+
+async function loadMore(resourceId, name, offset) {
+  if (!resourceId) return;
+  addTyping();
+  try {
+    const result = await ckanGet('datastore_search', { resource_id: resourceId, limit: 20, offset });
+    removeTyping();
+    const fields = (result.fields || []).filter(f => f.id !== '_id');
+    const records = result.records || [];
+    if (records.length === 0) { addMsg('✅ Nessun altro record disponibile.'); return; }
+    let rows = records.map(rec =>
+      `<tr>${fields.map(f => `<td title="${rec[f.id]??''}">${String(rec[f.id]??'').slice(0,60)}</td>`).join('')}</tr>`
+    ).join('');
+    const html = `
+      <div class="datastore-preview">
+        <div class="datastore-header"><span>📊 ${name} (offset ${offset})</span><span>${records.length} record</span></div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr>${fields.map(f=>`<th>${f.id}</th>`).join('')}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    addMsg(html);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+}
+
+// ── ULTIMI AGGIORNATI ──────────────────────────────────────────────────────
+
+async function loadRecent() {
+  addMsg('🕐 Ultimi dataset aggiornati', true);
+  addTyping();
+  try {
+    const result = await ckanGet('package_search', {
+      q: '*:*', rows: ROWS, sort: 'metadata_modified desc'
+    });
+    removeTyping();
+    renderResults(result, 'ultimi aggiornati');
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+}
+
+// ── SIDEBAR ORGANIZZAZIONI ─────────────────────────────────────────────────
+
+async function loadOrgs() {
+  try {
+    const result = await ckanGet('package_search', {
+      q: '*:*', rows: 0,
+      'facet': 'on',
+      'facet.field': '["organization"]',
+      'facet.limit': 20
+    });
+    const orgs = result.search_facets?.organization?.items || [];
+    const list = document.getElementById('orgList');
+    if (orgs.length === 0) {
+      list.innerHTML = '<div style="font-size:11px;color:var(--text3);">Non disponibile</div>';
+      return;
+    }
+    list.innerHTML = orgs.slice(0, 15).map(o => `
+      <div class="org-item" onclick="searchOrg('${o.name}','${o.display_name.replace(/'/g,"\'")}')">
+        <div class="org-dot"></div>
+        <span>${o.display_name}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${o.count.toLocaleString('it')}</span>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('orgList').innerHTML = '<div style="font-size:11px;color:var(--text3);">Non disponibile</div>';
+  }
+}
+
+async function searchOrg(orgName, orgTitle) {
+  addMsg(`🏢 Organizzazione: <strong>${orgTitle}</strong>`, true);
+  addTyping();
+  try {
+    const result = await ckanGet('package_search', {
+      fq: `owner_org:${orgName}`, rows: ROWS, sort: 'metadata_modified desc'
+    });
+    removeTyping();
+    renderResults(result, orgTitle);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+}
+
+// ── INPUT KEYBOARD ─────────────────────────────────────────────────────────
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+
+// ── RICERCA AVANZATA ──────────────────────────────────────────────────────
+
+function toggleAdv() {
+  const panel = document.getElementById('advPanel');
+  const toggle = document.getElementById('advToggle');
+  const isOpen = panel.classList.toggle('open');
+  toggle.classList.toggle('open', isOpen);
+  toggle.textContent = isOpen ? '✕ Chiudi' : '⚙️ Avanzata';
+  // Popola select organizzazioni se vuoto
+  if (isOpen && document.getElementById('advOrg').options.length <= 1) {
+    populateAdvOrgs();
+  }
+}
+
+async function populateAdvOrgs() {
+  try {
+    const result = await ckanGet('package_search', {
+      q: '*:*', rows: 0,
+      'facet': 'on',
+      'facet.field': '["organization"]',
+      'facet.limit': 50
+    });
+    const orgs = result.search_facets?.organization?.items || [];
+    const sel = document.getElementById('advOrg');
+    orgs.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.name;
+      opt.textContent = `${o.display_name} (${o.count.toLocaleString('it')})`;
+      sel.appendChild(opt);
+    });
+  } catch(e) { /* silenzioso */ }
+}
+
+function resetAdv() {
+  document.getElementById('advQ').value = '';
+  document.getElementById('advGroup').value = '';
+  document.getElementById('advOrg').value = '';
+  document.getElementById('advFormat').value = '';
+  document.getElementById('advLicense').value = '';
+  document.getElementById('advSort').value = 'score desc';
+  document.getElementById('advActiveFilters').innerHTML = '';
+}
+
+function buildAdvFilterTags(params) {
+  const labels = {
+    q: '🔍', group: '🗂️', org: '🏢', format: '📄', license: '📜'
+  };
+  const container = document.getElementById('advActiveFilters');
+  container.innerHTML = '';
+  Object.entries(params).forEach(([k,v]) => {
+    if (!v || k === 'sort') return;
+    const tag = document.createElement('span');
+    tag.className = 'filter-tag';
+    tag.innerHTML = `${labels[k]||''} ${v} <button onclick="this.parentElement.remove()">×</button>`;
+    container.appendChild(tag);
+  });
+}
+
+async function doAdvSearch() {
+  const q       = document.getElementById('advQ').value.trim();
+  const group   = document.getElementById('advGroup').value;
+  const org     = document.getElementById('advOrg').value;
+  const format  = document.getElementById('advFormat').value;
+  const license = document.getElementById('advLicense').value;
+  const sort    = document.getElementById('advSort').value;
+
+  // Costruisci fq
+  const fqParts = [];
+  if (group)   fqParts.push(`groups:${group}`);
+  if (org)     fqParts.push(`organization:${org}`);
+  if (format)  fqParts.push(`res_format:${format}`);
+  if (license) fqParts.push(`license_id:${license}`);
+
+  if (!q && fqParts.length === 0) {
+    addMsg('<div class="error-msg">⚠️ Inserisci almeno un criterio di ricerca.</div>');
+    return;
+  }
+
+  // Etichetta messaggio
+  const parts = [];
+  if (q) parts.push(`"${q}"`);
+  if (group)   parts.push(`gruppo:${group}`);
+  if (org)     parts.push(`org:${org}`);
+  if (format)  parts.push(`formato:${format}`);
+  if (license) parts.push(`licenza:${license}`);
+  const label = parts.join(' · ');
+
+  addMsg(`🔎 Ricerca avanzata: <strong>${label}</strong>`, true);
+  addTyping();
+
+  // Chiudi pannello
+  document.getElementById('advPanel').classList.remove('open');
+  document.getElementById('advToggle').classList.remove('open');
+  document.getElementById('advToggle').textContent = '⚙️ Avanzata';
+
+  // Mostra filtri attivi
+  buildAdvFilterTags({ q, group, org, format, license, sort });
+
+  try {
+    const params = {
+      q: q || '*:*',
+      rows: ROWS,
+      sort: sort
+    };
+    if (fqParts.length > 0) params.fq = fqParts.join(' AND ');
+
+    const result = await ckanGet('package_search', params);
+    removeTyping();
+    renderResults(result, label);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+loadOrgs();
+</script>
+</body>
+</html>
