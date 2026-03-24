@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.55</div>
+  <div class="header-badge">v2026.03.24.58</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -881,17 +881,19 @@ async function runCombinedQuery(offset=0) {
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
       "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-      "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n" +
+      "SELECT DISTINCT ?d ?title ?description ?modified WHERE {\n" +
       triples +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
       (state.publisher && state.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
       "  OPTIONAL { ?d dct:modified ?modified }\n" +
       filters +
-      "} GROUP BY ?d ORDER BY DESC(MAX(?modified)) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+      "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 
     const rows = await sparql(q);
     removeTyping();
-    renderResults(rows, label, offset > 0);
+    const uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
+    const rhMap = await fetchRhNames(uris);
+    renderResults(rows, label, offset > 0, rhMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
@@ -900,6 +902,29 @@ async function runCombinedQuery(offset=0) {
 }
 
 // ── SPARQL FETCH ──────────────────────────────────────────────────────────
+
+// Fetcha rightsHolder per una lista di URI dataset con VALUES
+async function fetchRhNames(uris) {
+  if (!uris.length) return {};
+  const values = uris.map(u => '<' + u + '>').join(' ');
+  const q = "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+    "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+    "SELECT DISTINCT ?d ?rhName WHERE {\n" +
+    "  VALUES ?d { " + values + " }\n" +
+    "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n" +
+    "}";
+  try {
+    const rows = await sparql(q);
+    const map = {};
+    for (const r of rows) {
+      const d = val(r,'d');
+      const rh = val(r,'rhName');
+      if (rh && !map[d]) map[d] = rh; // prendi il primo
+    }
+    return map;
+  } catch(e) { return {}; }
+}
+
 async function sparql(query) {
   const url = new URL(SPARQL);
   url.searchParams.set('query', query);
@@ -947,7 +972,7 @@ function fmtLabel(uri) {
 function shortDate(iso) { return iso ? iso.slice(0,10) : ''; }
 
 // ── RENDER RESULTS ────────────────────────────────────────────────────────
-function renderResults(rows, label, append=false) {
+function renderResults(rows, label, append=false, rhMap={}) {
   if (!rows.length && !append) {
     addMsg(`<div class="no-results"><div class="icon">🔎</div>Nessun dataset trovato per <strong>"${label}"</strong>.</div>`);
     return;
@@ -957,14 +982,17 @@ function renderResults(rows, label, append=false) {
     return;
   }
 
-  // Dedup lato JS come safety net
-  const seenSet = new Set();
-  const unique = rows.filter(r => {
+  // Dedup: per ogni URI tieni la riga con rhName non vuoto
+  const seenMap2 = new Map();
+  for (const r of rows) {
     const d = val(r,'d');
-    if (seenSet.has(d)) return false;
-    seenSet.add(d);
-    return true;
-  });
+    if (!seenMap2.has(d)) {
+      seenMap2.set(d, r);
+    } else if (!val(seenMap2.get(d),'rhName') && val(r,'rhName')) {
+      seenMap2.set(d, r);
+    }
+  }
+  const unique = [...seenMap2.values()];
 
   const hasMore = unique.length >= PAGE_SIZE;
   const currentOffset = lastQuery ? lastQuery.offset : 0;
@@ -979,7 +1007,7 @@ function renderResults(rows, label, append=false) {
 
   unique.forEach(r => {
     const title    = val(r,'title');
-    const org      = val(r,'rhName') || '';
+    const org      = rhMap[val(r,'d')] || val(r,'rhName') || '';
     const notes    = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
     const modified = shortDate(val(r,'modified'));
     const dUri     = val(r,'d');
@@ -1172,7 +1200,9 @@ async function searchByKeyword(q, offset=0) {
   const words = q.trim().split(/\s+/);
   const rows = await sparql(buildKeywordQuery(words, offset));
   removeTyping();
-  renderResults(rows, q, offset > 0);
+    const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
+    const _rhMap = await fetchRhNames(_uris);
+  renderResults(rows, q, offset > 0, _rhMap);
 }
 
 // ── TEMA ──────────────────────────────────────────────────────────────────
@@ -1265,7 +1295,9 @@ async function loadRecent(offset=0) {
     const rows = await sparql(buildRecentQuery(offset));
     lastQuery = { type:'recent', params:{}, offset, label:'ultimi aggiornati' };
     removeTyping();
-    renderResults(rows, 'ultimi aggiornati', offset > 0);
+    const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
+    const _rhMap = await fetchRhNames(_uris);
+    renderResults(rows, 'ultimi aggiornati', offset > 0, _rhMap);
   } catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
 }
 
@@ -1328,7 +1360,9 @@ async function doAdvSearch() {
   try {
     const rows = await sparql(buildAdvQuery(q, theme, pub, identifier, format, license, sort, 0));
     removeTyping();
-    renderResults(rows, label, false);
+    const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
+    const _rhMap = await fetchRhNames(_uris);
+    renderResults(rows, label, false, _rhMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
@@ -1365,13 +1399,12 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n" +
+    "SELECT DISTINCT ?d ?title ?description ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-    (!pub ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
-    "  OPTIONAL { ?d dct:modified ?modified }\n" +
+        "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
-    "} GROUP BY ?d ORDER BY " + orderBy.replace("?modified", "MAX(?modified)") + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+    "} ORDER BY " + orderBy + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 
@@ -1583,11 +1616,9 @@ const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
   "PREFIX dct: <http://purl.org/dc/terms/>\n" +
   "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
-const SPARQL_SELECT = "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n";
-const SPARQL_GROUPBY = "} GROUP BY ?d ORDER BY DESC(MAX(?modified)) LIMIT ";
+const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?modified WHERE {\n";
 const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-  "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
 function kwFilter(words) {
@@ -1605,7 +1636,7 @@ function buildKeywordQuery(words, offset) {
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
     "  FILTER(" + kwFilter(words) + ")\n" +
-    SPARQL_GROUPBY + FETCH_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildRecentQuery(offset) {
@@ -1615,7 +1646,7 @@ function buildRecentQuery(offset) {
     "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
-    SPARQL_GROUPBY + FETCH_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildCombinedQuery(s, offset) {
@@ -1636,13 +1667,13 @@ function buildCombinedQuery(s, offset) {
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n" +
+    "SELECT DISTINCT ?d ?title ?description ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     (s.publisher && s.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
-    "} GROUP BY ?d ORDER BY DESC(MAX(?modified)) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
 async function loadMoreResults(offset) {
@@ -1665,7 +1696,9 @@ async function loadMoreResults(offset) {
     }
     lastQuery.offset = offset;
     removeTyping();
-    renderResults(rows, lq.label, true);
+    const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
+    const _rhMap = await fetchRhNames(_uris);
+    renderResults(rows, lq.label, true, _rhMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
