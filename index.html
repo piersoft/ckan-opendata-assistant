@@ -507,7 +507,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.17</div>
+  <div class="header-badge">v2026.03.24.18</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1054,23 +1054,28 @@ async function searchPublisher(pubName) {
 }
 
 
-async function searchByIdentifier(identifier, name) {
+async function searchByName(name) {
   // Toggle
-  if (state.publisher === identifier) {
+  if (state.publisher === name && state.publisherType === 'name') {
     state.publisher = null; state.publisherLabel = null; state.publisherType = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
     updateActiveBar();
     return;
   }
-  state.publisher = identifier;
+  state.publisher = name;
   state.publisherLabel = name;
-  state.publisherType = 'identifier';
+  state.publisherType = 'name';
   document.querySelectorAll('.org-item').forEach(i=>{
-    i.classList.toggle('selected', i.dataset.publisher === identifier);
+    i.classList.toggle('selected', i.dataset.publisher === name);
   });
   updateActiveBar();
   closeSidebarMobile();
   runCombinedQuery(0);
+}
+
+async function searchByIdentifier(identifier, name) {
+  // Manteniamo per compatibilità ma ora usa foaf:name esatto
+  searchByName(name);
 }
 
 async function searchCatalog(catalogUri, catalogTitle) {
@@ -1253,27 +1258,26 @@ let acTimer = null;
 
 async function loadAcCache() {
   if (acCache) return acCache;
-  const rows = await sparql(`
-    PREFIX dcat: <http://www.w3.org/ns/dcat#>
-    PREFIX dct:  <http://purl.org/dc/terms/>
-    PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-    SELECT ?name ?identifier (COUNT(DISTINCT ?d) AS ?count) WHERE {
-      ?d a dcat:Dataset .
-      ?d dct:rightsHolder ?rh .
-      ?rh foaf:name ?name .
-      ?rh dct:identifier ?identifier .
-    } GROUP BY ?name ?identifier ORDER BY DESC(?count) LIMIT 500`);
-  // Deduplica per identifier IPA, tieni il nome più frequente per codice
-  const byId = new Map();
+  const rows = await sparql(
+    "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+    "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+    "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+    "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+    "  ?d a dcat:Dataset .\n" +
+    "  ?d dct:rightsHolder ?rh .\n" +
+    "  ?rh foaf:name ?name .\n" +
+    "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 500"
+  );
+  // Deduplica per nome normalizzato (trim + lowercase)
+  const byName = new Map();
   rows.forEach(r => {
-    const id = val(r,'identifier');
-    const n  = val(r,'name');
-    const c  = parseInt(val(r,'count')||'0');
-    if (!byId.has(id) || c > byId.get(id).count) {
-      byId.set(id, { name: n, identifier: id, count: c });
-    }
+    const n = val(r,'name').trim();
+    const c = parseInt(val(r,'count')||'0');
+    const key = n.toLowerCase();
+    if (!byName.has(key) || c > byName.get(key).count)
+      byName.set(key, { name: n, count: c });
   });
-  acCache = [...byId.values()].sort((a,b) => b.count - a.count);
+  acCache = [...byName.values()].sort((a,b) => b.count - a.count);
   return acCache;
 }
 
@@ -1290,20 +1294,19 @@ async function acPublisher(q) {
     ).slice(0, 10);
     if (!matches.length) { list.style.display = 'none'; return; }
     list.innerHTML = matches.map(m => {
-      const safeName = m.name.replace(/'/g,"\'").replace(/"/g,'&quot;');
-      const safeId   = (m.identifier||'').replace(/'/g,"\'");
-      return `<div class="ac-item" onclick="selectPub('${safeName}','${safeId}')">
-        <span>${m.name} <span style="color:var(--text3);font-family:var(--mono);font-size:10px">[${m.identifier||''}]</span></span>
-        <span class="ac-count">${(m.count||0).toLocaleString('it')} ds</span>
-      </div>`;
+      const safeName = m.name.replace(/'/g,"\\'");
+      return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
+        '<span>' + m.name + '</span>' +
+        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
+        '</div>';
     }).join('');
     list.style.display = 'block';
   }, 250);
 }
 
-function selectPub(name, identifier) {
+function selectPub(name) {
   document.getElementById('advPub').value = name;
-  document.getElementById('advPub').dataset.identifier = identifier || '';
+  document.getElementById('advPub').dataset.name = name;
   document.getElementById('acList').style.display = 'none';
 }
 
@@ -1434,35 +1437,28 @@ async function loadOrgs(offset=0) {
       "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
       "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-      "SELECT ?name ?identifier (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+      "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
       "  ?d a dcat:Dataset .\n" +
       "  ?d dct:rightsHolder ?rh .\n" +
       "  ?rh foaf:name ?name .\n" +
-      "  ?rh dct:identifier ?identifier .\n" +
-      "} GROUP BY ?name ?identifier ORDER BY DESC(?count) LIMIT " + ORG_PAGE + " OFFSET " + offset
+      "} GROUP BY ?name ORDER BY DESC(?count) LIMIT " + ORG_PAGE + " OFFSET " + offset
     );
-
-    // Deduplica per identifier, tieni nome più frequente
-    const byId = new Map();
-    rows.forEach(r => {
-      const id = val(r,'identifier'), n = val(r,'name'), c = parseInt(val(r,'count')||'0');
-      if (!byId.has(id) || c > byId.get(id).count) byId.set(id, { name:n, identifier:id, count:c });
-    });
-    const orgs = [...byId.values()];
 
     const list = document.getElementById('orgList');
     const prevBtn = list.querySelector('.load-more-orgs');
     if (prevBtn) prevBtn.remove();
 
-    const fragment = orgs.map(o =>
-      '<div class="org-item" data-publisher="' + o.identifier + '" onclick="searchByIdentifier(\'' +
-        o.identifier.replace(/'/g,"\'") + '\',\'' + o.name.replace(/'/g,"\'") + '\')">' +
-      '<div class="org-dot"></div>' +
-      '<span>' + o.name + '</span>' +
-      '<span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">' +
-        parseInt(o.count).toLocaleString('it') + '</span>' +
-      '</div>'
-    ).join('');
+    const fragment = rows.map(r => {
+      const name = val(r,'name').trim();
+      const count = parseInt(val(r,'count'));
+      const safeName = name.replace(/'/g,"\'");
+      return '<div class="org-item" data-publisher="' + name + '" onclick="searchByName(\'' + safeName + '\')">' +
+        '<div class="org-dot"></div>' +
+        '<span>' + name + '</span>' +
+        '<span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">' +
+          count.toLocaleString('it') + '</span>' +
+        '</div>';
+    }).join('');
 
     if (offset === 0) list.innerHTML = fragment;
     else list.insertAdjacentHTML('beforeend', fragment);
@@ -1511,9 +1507,7 @@ async function filterOrgs(q) {
       const safeName = m.name.replace(/'/g, "\\'");
       const safeId   = (m.identifier||'').replace(/'/g, "\\'");
       return '<div class="ac-item" onclick="selectOrgFromSearch(\'' + safeName + '\',\'' + safeId + '\')">' +
-        '<span>' + m.name +
-          ' <span style="color:var(--text3);font-family:var(--mono);font-size:10px">[' + (m.identifier||'') + ']</span>' +
-        '</span>' +
+        '<span>' + m.name + '</span>' +
         '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
         '</div>';
     }).join('');
@@ -1521,13 +1515,13 @@ async function filterOrgs(q) {
   }, 200);
 }
 
-function selectOrgFromSearch(name, identifier) {
+function selectOrgFromSearch(name) {
   // Chiudi dropdown e pulisci input
   document.getElementById('orgSearch').value = name;
   document.getElementById('orgAcList').classList.remove('open');
   document.getElementById('orgAcList').innerHTML = '';
   // Seleziona l'amministrazione
-  searchByIdentifier(identifier, name);
+  searchByName(name);
 }
 
 // Chiudi dropdown se click fuori
