@@ -462,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.14</div>
+  <div class="header-badge">v2026.03.24.15</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -635,8 +635,9 @@ let lastQuery = null; // { type, params, offset, label }
 const state = {
   keywords: null,      // stringa libera
   theme: null,         // { code, label }
-  publisher: null,     // URI catalogo
-  publisherLabel: null // titolo catalogo
+  publisher: null,     // URI catalogo o nome stringa
+  publisherLabel: null,// titolo leggibile
+  publisherType: null  // 'uri' | 'name'
 };
 
 function updateActiveBar() {
@@ -665,14 +666,14 @@ function removeFilter(key) {
   if (key === 'theme') document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   if (key === 'keywords') document.getElementById('searchInput').value = '';
   if (key === 'publisher') {
-    state.publisherLabel = null;
+    state.publisherLabel = null; state.publisherType = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   }
   updateActiveBar();
 }
 
 function clearAllFilters() {
-  state.keywords = null; state.theme = null; state.publisher = null; state.publisherLabel = null;
+  state.keywords = null; state.theme = null; state.publisher = null; state.publisherLabel = null; state.publisherType = null;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
@@ -696,13 +697,20 @@ async function runCombinedQuery(offset=0) {
     var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
     if (state.theme)
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
-    if (state.publisher)
+
+    // URI catalogo → tripla dcat:dataset
+    // Nome stringa → filtro su rightsHolder foaf:name
+    if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
+    if (state.publisher && state.publisherType === 'name')
+      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
     var filters = "  " + LANG_FILTER + "\n";
-    if (state.keywords) {
-      var kf = kwFilter(state.keywords.split(/\s+/));
-      filters += "  FILTER(" + kf + ")\n";
+    if (state.keywords)
+      filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
+    if (state.publisher && state.publisherType === 'name') {
+      var pl = state.publisher.toLowerCase().replace(/"/g, '');
+      filters += "  FILTER(CONTAINS(LCASE(STR(?rhName)),\"" + pl + "\"))\n";
     }
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -979,17 +987,19 @@ async function searchTheme(code, label) {
 // ── PUBLISHER ─────────────────────────────────────────────────────────────
 async function searchPublisher(pubName) {
   if (state.publisher === pubName) {
-    state.publisher = null;
+    state.publisher = null; state.publisherLabel = null; state.publisherType = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
     updateActiveBar();
     return;
   }
   state.publisher = pubName;
+  state.publisherLabel = pubName;
+  state.publisherType = 'name';
   document.querySelectorAll('.org-item').forEach(i=>{
     i.classList.toggle('selected', i.dataset.publisher === pubName);
   });
   updateActiveBar();
-  runCombinedQuery();
+  runCombinedQuery(0);
   closeSidebarMobile();
 }
 
@@ -1013,6 +1023,7 @@ async function searchCatalog(catalogUri, catalogTitle) {
   }
   state.publisher = catalogUri;
   state.publisherLabel = catalogTitle;
+  state.publisherType = 'uri';
   document.querySelectorAll('.org-item').forEach(i=>{
     i.classList.toggle('selected', i.dataset.publisher === catalogUri);
   });
@@ -1294,12 +1305,21 @@ function buildRecentQuery(offset) {
 
 function buildCombinedQuery(s, offset) {
   var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
-  if (s.theme)     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
-  if (s.publisher) triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
+  if (s.theme)
+    triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
+  if (s.publisher && s.publisherType === 'uri')
+    triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
+  if (s.publisher && s.publisherType === 'name')
+    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
+
   var filters = "  " + LANG_FILTER + "\n";
-  if (s.keywords) {
+  if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
+  if (s.publisher && s.publisherType === 'name') {
+    var pl = s.publisher.toLowerCase().replace(/"/g, '');
+    filters += "  FILTER(CONTAINS(LCASE(STR(?rhName)),\"" + pl + "\"))\n";
   }
+
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
