@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#004D99">
 <title>Assistente Open Data · dati.gov.it</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
@@ -24,7 +25,7 @@
   --border-dark:  #B3B3B3;
   --text:         #17324D;
   --text2:        #455B71;
-  --text3:        #7A8FA6;
+  --text3:        #5C6F82;
   --tag-bg:       #CCE3F5;
   --tag-text:     #004D99;
   --radius:       4px;
@@ -557,11 +558,62 @@ header{
     font-size: 13px;
   }
 
+
+  /* ── ACCESSIBILITÀ WCAG 2.1 AA ─────────────────────────── */
+
+  /* Focus visibile per navigazione da tastiera */
+  :focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* Skip link per screen reader */
+  .skip-link {
+    position: absolute;
+    top: -100%;
+    left: 8px;
+    background: var(--primary-dark);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 14px;
+    z-index: 9999;
+    text-decoration: none;
+  }
+  .skip-link:focus { top: 8px; }
+
+  /* Target size minimo 44px (WCAG 2.5.5) */
+  .send-btn, .adv-btn, .run-query-btn { min-height: 44px; min-width: 44px; }
+  .quick-btn { min-height: 44px; }
+  .chip { min-height: 36px; display: inline-flex; align-items: center; }
+  .org-item { min-height: 40px; }
+
+  /* Riduzione movimento per utenti sensibili */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Alto contrasto sistema operativo */
+  @media (forced-colors: active) {
+    .dataset-card, .detail-panel, .msg-bubble { border: 2px solid ButtonText; }
+    .send-btn, .adv-btn.primary { background: ButtonText; color: ButtonFace; }
+  }
+
 </style>
 </head>
 <body>
 
-<header>
+<a href="#main-content" class="skip-link">Salta al contenuto principale</a>
+<header role="banner">
   <div class="header-left">
     <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
     <div class="logo-icon">🏛️</div>
@@ -570,7 +622,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.42</div>
+  <div class="header-badge">v2026.03.24.43</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -583,8 +635,8 @@ header{
   <button class="run-query-btn" onclick="runCombinedQuery()">▶ Cerca</button>
 </div>
 
-<div class="main">
-  <aside class="sidebar" id="sidebar">
+<div class="main" id="main-content" role="main">
+  <aside class="sidebar" role="complementary" aria-label="Navigazione e filtri" id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Azioni rapide</div>
       <button class="quick-btn" onclick="quickSearch('rifiuti')">♻️ Rifiuti</button>
@@ -626,7 +678,7 @@ header{
     </div>
   </aside>
 
-  <div class="chat-area">
+  <div class="chat-area" role="region" aria-label="Risultati ricerca">
     <div class="messages" id="messages">
       <div class="welcome" id="welcomeScreen">
         <div class="welcome-icon">🔍</div>
@@ -723,10 +775,10 @@ header{
     <div class="input-bar">
       <div class="input-wrap">
         <span style="font-size:16px;color:var(--text3)">🔍</span>
-        <input type="text" id="searchInput" placeholder="Cerca dataset… es. 'rifiuti Puglia', 'ISTAT popolazione'" />
+        <input type="text" id="searchInput" aria-label="Cerca dataset nel catalogo nazionale" placeholder="Cerca dataset… es. 'rifiuti Puglia', 'ISTAT popolazione'" />
       </div>
-      <button class="send-btn" id="sendBtn" onclick="doSearch()">➤</button>
-      <button class="adv-toggle" id="advToggle" onclick="toggleAdv()">⚙️ Avanzata</button>
+      <button class="send-btn" id="sendBtn" onclick="doSearch()" aria-label="Avvia ricerca">➤</button>
+      <button class="adv-toggle" id="advToggle" onclick="toggleAdv()" aria-expanded="false" aria-controls="advPanel">⚙️ Avanzata</button>
     </div>
   </div>
 </div>
