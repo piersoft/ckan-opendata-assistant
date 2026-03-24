@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.52</div>
+  <div class="header-badge">v2026.03.24.53</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -970,17 +970,20 @@ function renderResults(rows, label, append=false) {
       rhNames.get(d).push(rh);
     }
   }
-  // Crea righe uniche con rhName concatenato
+    // Crea righe uniche: preferisci rhName più specifico (diverso da pubName/catalogo federatore)
   const unique = [...seenMap.values()].map(r => {
     const d = val(r,'d');
     const names = rhNames.get(d) || [];
+    const pubName = val(r,'pubName');
     if (names.length === 0) return r;
-    // Clona la riga con rhName (usa il primo trovato o la concatenazione)
+    // Filtra: preferisci nomi diversi dal publisher (catalogo federatore)
+    const specific = names.filter(n => n !== pubName);
+    const best = specific.length > 0 ? specific : names;
     const clone = JSON.parse(JSON.stringify(r));
     if (clone.rhName) {
-      clone.rhName.value = names.join(' / ');
-    } else if (names.length > 0) {
-      clone.rhName = { type: 'literal', value: names.join(' / ') };
+      clone.rhName.value = best.join(' / ');
+    } else {
+      clone.rhName = { type: 'literal', value: best.join(' / ') };
     }
     return clone;
   });
@@ -1602,10 +1605,11 @@ const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
   "PREFIX dct: <http://purl.org/dc/terms/>\n" +
   "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
-const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n";
+const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?rhName ?pubName ?modified WHERE {\n";
 const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
   "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
+  "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
 function kwFilter(words) {
