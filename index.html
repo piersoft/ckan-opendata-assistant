@@ -507,7 +507,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.18</div>
+  <div class="header-badge">v2026.03.24.19</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -750,17 +750,15 @@ async function runCombinedQuery(offset=0) {
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
     if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
-    if (state.publisher && (state.publisherType === 'identifier' || state.publisherType === 'name'))
-      triples += "  ?d dct:rightsHolder ?rh .\n";
+    if (state.publisher && state.publisherType === 'name')
+      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
     var filters = "  " + LANG_FILTER + "\n";
     if (state.keywords)
       filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
-    if (state.publisher && state.publisherType === 'identifier')
-      filters += '  FILTER(EXISTS { ?rh dct:identifier "' + state.publisher.replace(/"/g,'') + '" })\n';
     if (state.publisher && state.publisherType === 'name') {
-      var pl = state.publisher.toLowerCase().replace(/"/g,'');
-      filters += '  FILTER(CONTAINS(LCASE(STR(?rh)),"' + pl + '"))\n';
+      var nm = state.publisher.trim().replace(/"/g,'\"');
+      filters += '  FILTER(LCASE(STR(?rhName)) = LCASE("' + nm + '"))\n';
     }
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1191,13 +1189,10 @@ async function doAdvSearch() {
 
 function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset) {
   var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
-
   if (theme)
     triples += "  ?d dcat:theme <" + THEME_BASE + theme + "> .\n";
-
   if (format)
     triples += "  ?d dcat:distribution ?distFmt . ?distFmt dct:format <" + FT_BASE + format + "> .\n";
-
   if (license) {
     var licMap = {
       CC_BY:   ['https://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/it/','https://creativecommons.org/licenses/by/4.0/legalcode'],
@@ -1209,29 +1204,16 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
     if (licUris)
       triples += "  ?d dcat:distribution ?distLic . ?distLic dct:license ?lic . VALUES ?lic { " + licUris + " }\n";
   }
-
-  if (pub) {
-    if (identifier) {
-      triples += "  ?d dct:rightsHolder ?rh . ?rh dct:identifier \"" + identifier + "\" .\n";
-    } else {
-      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
-    }
-  }
+  if (pub)
+    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
-
-  if (q) {
-    var words = q.trim().split(/\s+/);
-    filters += "  FILTER(" + kwFilter(words) + ")\n";
-  }
-
-  if (pub && !identifier) {
-    var pl = pub.toLowerCase().replace(/"/g, '');
-    filters += "  FILTER(CONTAINS(LCASE(STR(?rhName)),\"" + pl + "\"))\n";
-  }
+  if (q)
+    filters += "  FILTER(" + kwFilter(q.trim().split(/\s+/)) + ")\n";
+  if (pub)
+    filters += '  FILTER(CONTAINS(LCASE(STR(?rhName)),"' + pub.toLowerCase().replace(/"/g,'') + '"))\n';
 
   var orderBy = (sort === 'title') ? '?title' : 'DESC(?modified)';
-
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
@@ -1372,18 +1354,14 @@ function buildCombinedQuery(s, offset) {
     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
   if (s.publisher && s.publisherType === 'uri')
     triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
-  if (s.publisher && (s.publisherType === 'identifier' || s.publisherType === 'name'))
-    triples += "  ?d dct:rightsHolder ?rh .\n";
+  if (s.publisher && s.publisherType === 'name')
+    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
-  if (s.publisher && s.publisherType === 'identifier')
-    filters += '  FILTER(EXISTS { ?rh dct:identifier "' + s.publisher.replace(/"/g,'') + '" })\n';
-  if (s.publisher && s.publisherType === 'name') {
-    var pl = s.publisher.toLowerCase().replace(/"/g,'');
-    filters += '  FILTER(CONTAINS(LCASE(STR(?rh)),"' + pl + '"))\n';
-  }
+  if (s.publisher && s.publisherType === 'name')
+    filters += '  FILTER(STR(?rhName) = "' + s.publisher.replace(/"/g,'\"') + '")\n';
 
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
