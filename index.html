@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.39</div>
+  <div class="header-badge">v2026.03.24.40</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -814,12 +814,14 @@ async function runCombinedQuery(offset=0) {
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
     if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
+    if (state.publisher && state.publisherType === 'name')
+      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
     var filters = "  " + LANG_FILTER + "\n";
     if (state.keywords)
       filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
     if (state.publisher && state.publisherType === 'name')
-      filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name "' + state.publisher.replace(/"/g,'\"') + '" ] })\n';
+      filters += '  FILTER(STR(?rhName) = "' + state.publisher + '")\n';
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
@@ -827,7 +829,7 @@ async function runCombinedQuery(offset=0) {
       "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
       triples +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-      "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
+      (state.publisher && state.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
       "  OPTIONAL { ?d dct:modified ?modified }\n" +
       filters +
       "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -1293,21 +1295,23 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
     triples += "  ?d dcat:distribution ?distFmt . ?distFmt dct:format <" + FT_BASE + format + "> .\n";
   if (license) {
     var licMap = {
-      CC_BY:   ['https://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/it/','https://creativecommons.org/licenses/by/4.0/legalcode'],
+      CC_BY:   ['https://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/','http://creativecommons.org/licenses/by/4.0/it/'],
       CC_ZERO: ['https://creativecommons.org/publicdomain/zero/1.0/','http://creativecommons.org/publicdomain/zero/1.0/'],
-      IODL:    ['https://www.dati.gov.it/content/italian-open-data-license-v20','http://www.dati.gov.it/iodl/2.0/'],
+      IODL:    ['https://www.dati.gov.it/content/italian-open-data-license-v20'],
       CC_BYSA: ['https://creativecommons.org/licenses/by-sa/4.0/']
     };
     var licUris = (licMap[license] || []).map(function(u){ return '<' + u + '>'; }).join(' ');
     if (licUris)
       triples += "  ?d dcat:distribution ?distLic . ?distLic dct:license ?lic . VALUES ?lic { " + licUris + " }\n";
   }
+  if (pub)
+    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (q)
     filters += "  FILTER(" + kwFilter(q.trim().split(/\s+/)) + ")\n";
   if (pub)
-    filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name ?rhn ] . FILTER(CONTAINS(LCASE(STR(?rhn)),"' + pub.toLowerCase().replace(/"/g,'') + '")) })\n';
+    filters += '  FILTER(CONTAINS(LCASE(STR(?rhName)),"' + pub.toLowerCase().replace(/"/g,'') + '"))\n';
 
   var orderBy = (sort === 'title') ? '?title' : 'DESC(?modified)';
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1316,7 +1320,7 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
     "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
+    (!pub ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
     "} ORDER BY " + orderBy + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -1567,12 +1571,14 @@ function buildCombinedQuery(s, offset) {
     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
   if (s.publisher && s.publisherType === 'uri')
     triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
+  if (s.publisher && s.publisherType === 'name')
+    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
   if (s.publisher && s.publisherType === 'name')
-    filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name "' + s.publisher.replace(/"/g,'\"') + '" ] })\n';
+    filters += '  FILTER(STR(?rhName) = "' + s.publisher + '")\n';
 
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
@@ -1580,7 +1586,7 @@ function buildCombinedQuery(s, offset) {
     "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
+    (s.publisher && s.publisherType !== 'name' ? "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" : "") +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
     "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
