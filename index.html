@@ -144,6 +144,25 @@
 
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+  /* AUTOCOMPLETE */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute; bottom: 100%; left: 0; right: 0; z-index: 200;
+    background: white; border: 1.5px solid var(--accent);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    max-height: 180px; overflow-y: auto;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.12);
+  }
+  .ac-item {
+    padding: 7px 12px; font-size: 12px; cursor: pointer;
+    border-bottom: 1px solid var(--surface2); color: var(--text);
+    display: flex; justify-content: space-between; align-items: center;
+    transition: background .1s;
+  }
+  .ac-item:hover { background: var(--accent-light); color: var(--accent); }
+  .ac-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); }
+
 </style>
 </head>
 <body>
@@ -239,9 +258,11 @@
             <option value="TRAN">🚗 Trasporti</option>
           </select>
         </div>
-        <div class="adv-field">
+        <div class="adv-field autocomplete-wrap">
           <label>Publisher</label>
-          <input type="text" id="advPub" placeholder="es. Regione Puglia, ISTAT…" />
+          <input type="text" id="advPub" placeholder="es. Regione Puglia, ISTAT…"
+                 oninput="acPublisher(this.value)" autocomplete="off" />
+          <div class="autocomplete-list" id="acList" style="display:none"></div>
         </div>
       </div>
       <div class="adv-row2">
@@ -264,12 +285,13 @@
           </select>
         </div>
         <div class="adv-field">
-          <label>Licenza</label>
+          <label>Licenza (su distribuzione)</label>
           <select id="advLicense">
             <option value="">— tutte —</option>
             <option value="CC_BY">CC BY 4.0</option>
             <option value="CC_ZERO">CC0 / Public Domain</option>
             <option value="IODL">IODL 2.0</option>
+            <option value="CC_BYSA">CC BY-SA 4.0</option>
           </select>
         </div>
         <div class="adv-field">
@@ -305,13 +327,6 @@ const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/
 const FT_BASE    = 'http://publications.europa.eu/resource/authority/file-type/';
 const LICENSE_BASE = 'http://publications.europa.eu/resource/authority/licence/';
 const PAGE_SIZE = 8;
-
-// Licenze: URI noti
-const LICENSE_URIS = {
-  CC_BY:   ['https://creativecommons.org/licenses/by/4.0/', 'http://creativecommons.org/licenses/by/4.0/'],
-  CC_ZERO: ['https://creativecommons.org/publicdomain/zero/1.0/', 'http://creativecommons.org/publicdomain/zero/1.0/'],
-  IODL:    ['https://www.dati.gov.it/iodl/2.0/', 'http://www.dati.gov.it/iodl/2.0/']
-};
 
 // ── SPARQL FETCH ──────────────────────────────────────────────────────────
 async function sparql(query) {
@@ -652,9 +667,24 @@ async function doAdvSearch() {
     if (theme)  triples += `\n  ?d dcat:theme <${THEME_BASE}${theme}> .`;
     if (format) triples += `\n  ?d dcat:distribution ?dist . ?dist dct:format <${FT_BASE}${format}> .`;
     if (license) {
-      const uris = LICENSE_URIS[license] || [];
+      // dct:license è su dcat:Distribution, non su dcat:Dataset
+      const licMap = {
+        CC_BY:   ['https://creativecommons.org/licenses/by/4.0/',
+                  'http://creativecommons.org/licenses/by/4.0/',
+                  'http://creativecommons.org/licenses/by/4.0/it/',
+                  'https://creativecommons.org/licenses/by/4.0/legalcode',
+                  'http://www.opendefinition.org/licenses/cc-by'],
+        CC_ZERO: ['https://creativecommons.org/publicdomain/zero/1.0/',
+                  'http://creativecommons.org/publicdomain/zero/1.0/'],
+        IODL:    ['https://www.dati.gov.it/content/italian-open-data-license-v20',
+                  'http://www.dati.gov.it/iodl/2.0/'],
+        CC_BYSA: ['https://creativecommons.org/licenses/by-sa/4.0/',
+                  'http://creativecommons.org/licenses/by-sa/4.0/']
+      };
+      const uris = licMap[license] || [];
       const values = uris.map(u=>`<${u}>`).join(' ');
-      triples += `\n  ?d dct:license ?lic . VALUES ?lic { ${values} }`;
+      // La licenza va filtrata sulla distribuzione
+      triples += `\n  ?d dcat:distribution ?distLic . ?distLic dct:license ?lic . VALUES ?lic { ${values} }`;
     }
 
     let filters = `FILTER(LANG(?title)='it'||LANG(?title)='')`;
@@ -715,6 +745,54 @@ async function loadOrgs() {
 // ── INPUT KEYBOARD ────────────────────────────────────────────────────────
 document.getElementById('searchInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') doSearch();
+});
+
+
+// ── AUTOCOMPLETE PUBLISHER ────────────────────────────────────────────────
+let acCache = null;
+let acTimer = null;
+
+async function loadAcCache() {
+  if (acCache) return acCache;
+  const rows = await sparql(`
+    PREFIX dcat: <http://www.w3.org/ns/dcat#>
+    PREFIX dct:  <http://purl.org/dc/terms/>
+    PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+    SELECT ?pubName (COUNT(DISTINCT ?d) AS ?count) WHERE {
+      ?d a dcat:Dataset .
+      ?d dct:publisher ?pub . ?pub foaf:name ?pubName .
+    } GROUP BY ?pubName ORDER BY DESC(?count) LIMIT 300`);
+  acCache = rows.map(r => ({ name: val(r,'pubName'), count: parseInt(val(r,'count')) }));
+  return acCache;
+}
+
+async function acPublisher(q) {
+  clearTimeout(acTimer);
+  const list = document.getElementById('acList');
+  if (!q || q.length < 2) { list.style.display = 'none'; return; }
+  acTimer = setTimeout(async () => {
+    const data = await loadAcCache();
+    const ql = q.toLowerCase();
+    const matches = data.filter(d => d.name.toLowerCase().includes(ql)).slice(0, 8);
+    if (!matches.length) { list.style.display = 'none'; return; }
+    list.innerHTML = matches.map(m =>
+      `<div class="ac-item" onclick="selectPub('${m.name.replace(/'/g,"\\'")}')">
+        <span>${m.name}</span>
+        <span class="ac-count">${m.count.toLocaleString('it')}</span>
+      </div>`
+    ).join('');
+    list.style.display = 'block';
+  }, 250);
+}
+
+function selectPub(name) {
+  document.getElementById('advPub').value = name;
+  document.getElementById('acList').style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap'))
+    document.getElementById('acList').style.display = 'none';
 });
 
 // ── INIT ──────────────────────────────────────────────────────────────────
