@@ -462,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.8</div>
+  <div class="header-badge">v2026.03.24.9</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -813,7 +813,7 @@ function renderResults(rows, label, append=false) {
     const title    = val(r,'title');
     const org      = val(r,'pubName');
     const notes    = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
-    const fmt      = fmtLabel(val(r,'format'));
+    const fmt      = ''; // formato rimosso dalla query listing, visibile nel dettaglio
     const modified = shortDate(val(r,'modified'));
     const dUri     = val(r,'d');
 
@@ -1050,7 +1050,6 @@ async function loadRecent(offset=0) {
         ?d dct:modified ?modified .
         OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
         OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-        OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
         FILTER(LANG(?title)='it'||LANG(?title)='')
       } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE} OFFSET ${offset}`);
     lastQuery = { type:'recent', params:{}, offset, label:'ultimi aggiornati' };
@@ -1269,11 +1268,10 @@ const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
   "PREFIX dct: <http://purl.org/dc/terms/>\n" +
   "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
-const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {\n";
+const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n";
 const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
   "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
-  "  OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
 function kwFilter(words) {
@@ -1312,7 +1310,6 @@ function buildCombinedQuery(s, offset) {
   return SPARQL_PREFIXES + SPARQL_SELECT + triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
-    "  OPTIONAL { ?d dcat:distribution ?distOpt . ?distOpt dct:format ?format }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
     "} ORDER BY DESC(?modified) LIMIT " + PAGE_SIZE + " OFFSET " + offset;
