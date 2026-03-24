@@ -494,6 +494,69 @@ header{
   }
   .sidebar-search .ac-dropdown.open { display: block; }
 
+
+  /* Anteprima dati CSV/XLSX */
+  .data-preview {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .data-preview-header {
+    background: var(--primary);
+    color: white;
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .data-preview-table {
+    overflow-x: auto;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .data-preview-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .data-preview-table th {
+    background: var(--surface2);
+    padding: 5px 10px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .data-preview-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--text);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .data-preview-table tr:hover td { background: var(--primary-bg); }
+  .data-preview-loading {
+    padding: 16px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
+  }
+
 </style>
 </head>
 <body>
@@ -507,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.20</div>
+  <div class="header-badge">v2026.03.24.21</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -751,24 +814,20 @@ async function runCombinedQuery(offset=0) {
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
     if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
-    if (state.publisher && state.publisherType === 'name')
-      triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
     var filters = "  " + LANG_FILTER + "\n";
     if (state.keywords)
       filters += "  FILTER(" + kwFilter(state.keywords.split(/\s+/)) + ")\n";
-    if (state.publisher && state.publisherType === 'name') {
-      var nm = state.publisher.trim().replace(/"/g,'\"');
-      filters += '  FILTER(LCASE(STR(?rhName)) = LCASE("' + nm + '"))\n';
-    }
+    if (state.publisher && state.publisherType === 'name')
+      filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name "' + state.publisher.replace(/"/g,'\"') + '" ] })\n';
 
     var q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
       "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-      "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n" +
+      "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
       triples +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-      "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+      "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
       "  OPTIONAL { ?d dct:modified ?modified }\n" +
       filters +
       "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -862,7 +921,7 @@ function renderResults(rows, label, append=false) {
 
   unique.forEach(r => {
     const title    = val(r,'title');
-    const org      = val(r,'pubName');
+    const org      = val(r,'rhName') || val(r,'pubName');
     const notes    = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
     const fmt      = ''; // formato rimosso dalla query listing, visibile nel dettaglio
     const modified = shortDate(val(r,'modified'));
@@ -898,32 +957,33 @@ function renderResults(rows, label, append=false) {
 
 // ── DETTAGLIO DATASET ─────────────────────────────────────────────────────
 async function showDataset(dUri, title, org) {
-  addMsg(`📂 <strong>${title}</strong>`, true);
+  addMsg('📂 <strong>' + title + '</strong>', true);
   addTyping();
   try {
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      SELECT ?description ?theme ?license ?modified ?distTitle ?format ?accessURL WHERE {
-        BIND(<${dUri}> AS ?d)
-        OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-        OPTIONAL { ?d dcat:theme ?theme }
-        OPTIONAL { ?d dct:license ?license }
-        OPTIONAL { ?d dct:modified ?modified }
-        OPTIONAL {
-          ?d dcat:distribution ?dist .
-          OPTIONAL { ?dist dct:title ?distTitle }
-          OPTIONAL { ?dist dct:format ?format }
-          OPTIONAL { ?dist dcat:accessURL ?accessURL }
-        }
-      } LIMIT 30`);
+    const rows = await sparql(
+      "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+      "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+      "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+      "SELECT ?description ?theme ?license ?modified ?distTitle ?format ?accessURL ?resourceId WHERE {\n" +
+      "  BIND(<" + dUri + "> AS ?d)\n" +
+      "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+      "  OPTIONAL { ?d dcat:theme ?theme }\n" +
+      "  OPTIONAL { ?d dct:license ?license }\n" +
+      "  OPTIONAL { ?d dct:modified ?modified }\n" +
+      "  OPTIONAL {\n" +
+      "    ?d dcat:distribution ?dist .\n" +
+      "    OPTIONAL { ?dist dct:title ?distTitle }\n" +
+      "    OPTIONAL { ?dist dct:format ?format }\n" +
+      "    OPTIONAL { ?dist dcat:accessURL ?accessURL }\n" +
+      "    OPTIONAL { ?dist dct:identifier ?resourceId }\n" +
+      "  }\n" +
+      "} LIMIT 30"
+    );
     removeTyping();
 
-    const desc     = val(rows[0],'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
-    const modified = shortDate(val(rows[0],'modified'));
+    const desc     = rows[0] ? val(rows[0],'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim() : '';
+    const modified = shortDate(val(rows[0]||{},'modified'));
     const themes   = [...new Set(rows.map(r=>val(r,'theme')).filter(Boolean))];
-    const license  = val(rows[0],'license');
 
     // Risorse uniche
     const distMap = new Map();
@@ -932,44 +992,61 @@ async function showDataset(dUri, title, org) {
       if (url && !distMap.has(url)) distMap.set(url, {
         title: val(r,'distTitle') || fmtLabel(val(r,'format')) || 'Risorsa',
         format: fmtLabel(val(r,'format')),
-        url
+        formatUri: val(r,'format'),
+        url,
+        resourceId: val(r,'resourceId')
       });
     });
     const dists = [...distMap.values()];
 
-    let resHtml = dists.length
-      ? dists.map(d => `<div class="resource-item">
-          <div>
-            <div class="resource-name">${d.title}</div>
-            ${d.format ? `<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">${d.format}</div>` : ''}
-          </div>
-          <button class="res-btn open" onclick="window.open('${d.url}','_blank')">↗ Apri</button>
-        </div>`).join('')
+    // Genera ID unici per preview container
+    var previewId = 'preview_' + Math.random().toString(36).slice(2);
+
+    // Trova prima risorsa CSV o XLSX per anteprima
+    var previewDist = dists.find(function(d){
+      var f = d.format.toUpperCase();
+      return f === 'CSV' || f === 'XLSX';
+    });
+
+    var resHtml = dists.length
+      ? dists.map(function(d) {
+          var fmt = d.format.toUpperCase();
+          var canPreview = (fmt === 'CSV' || fmt === 'XLSX');
+          var pid = 'prev_' + Math.random().toString(36).slice(2);
+          return '<div class="resource-item">' +
+            '<div><div class="resource-name">' + d.title + '</div>' +
+            (d.format ? '<div style="font-size:10px;color:var(--text3);font-family:var(--mono)">' + d.format + '</div>' : '') +
+            '</div>' +
+            '<div style="display:flex;gap:6px">' +
+            (canPreview ? '<button class="res-btn preview" onclick="tryDataPreview(\'' + (d.resourceId||'').replace(/'/g,"\'") + '\',\'' + d.url.replace(/'/g,"\'") + '\',\'' + fmt + '\',\'' + pid + '\')" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
+            '<button class="res-btn open" onclick="window.open(\'' + d.url.replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
+            '</div>' +
+            (canPreview ? '<div id="' + pid + '" style="grid-column:1/-1;width:100%;margin-top:4px"></div>' : '') +
+            '</div>';
+        }).join('')
       : '<div style="font-size:12px;color:var(--text3)">Nessuna distribuzione trovata.</div>';
 
-    const html = `<div class="detail-panel">
-      <div class="detail-header">
-        <h3>${title}</h3>
-        <div class="detail-org">📌 ${org}${modified?' · 📅 '+modified:''}</div>
-      </div>
-      <div class="detail-body">
-        ${desc ? `<div class="detail-desc">${desc.slice(0,500)}${desc.length>500?'…':''}</div>` : ''}
-        ${themes.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-          ${themes.map(t=>`<span class="meta-tag">${fmtLabel(t)}</span>`).join('')}
-        </div>` : ''}
-        <div class="resources-label">Distribuzioni (${dists.length})</div>
-        ${resHtml}
-      </div>
-    </div>
-    <div class="action-chips">
-      <span class="action-chip" onclick="window.open('${dUri}','_blank')">🔗 URI dataset</span>
-      <span class="action-chip" onclick="navigator.clipboard.writeText('${dUri}').then(()=>addMsg('✅ URI copiato!'))">📋 Copia URI</span>
-      ${org ? `<span class="action-chip" onclick="searchPublisher('${org.replace(/'/g,"\\'")}')">🏢 Altri di ${org.split(' ').slice(0,2).join(' ')}</span>` : ''}
-    </div>`;
+    var html = '<div class="detail-panel">' +
+      '<div class="detail-header">' +
+        '<h3>' + title + '</h3>' +
+        '<div class="detail-org">📌 ' + org + (modified ? ' · 📅 ' + modified : '') + '</div>' +
+      '</div>' +
+      '<div class="detail-body">' +
+        (desc ? '<div class="detail-desc">' + desc.slice(0,500) + (desc.length>500?'…':'') + '</div>' : '') +
+        (themes.length ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">' + themes.map(function(t){ return '<span class="meta-tag">' + fmtLabel(t) + '</span>'; }).join('') + '</div>' : '') +
+        '<div class="resources-label">Distribuzioni (' + dists.length + ')</div>' +
+        resHtml +
+      '</div>' +
+    '</div>' +
+    '<div class="action-chips">' +
+      '<span class="action-chip" onclick="window.open(\'' + dUri + '\',\'_blank\')">🔗 URI dataset</span>' +
+      '<span class="action-chip" onclick="navigator.clipboard.writeText(\'' + dUri + '\').then(function(){ addMsg(\'✅ URI copiato!\'); })">📋 Copia URI</span>' +
+      (org ? '<span class="action-chip" onclick="searchByName(\'' + org.replace(/'/g,"\'") + '\')">🏢 Altri di ' + org.split(' ').slice(0,3).join(' ') + '</span>' : '') +
+    '</div>';
     addMsg(html);
   } catch(e) {
     removeTyping();
-    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
   }
 }
 
@@ -1205,23 +1282,21 @@ function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset)
     if (licUris)
       triples += "  ?d dcat:distribution ?distLic . ?distLic dct:license ?lic . VALUES ?lic { " + licUris + " }\n";
   }
-  if (pub)
-    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (q)
     filters += "  FILTER(" + kwFilter(q.trim().split(/\s+/)) + ")\n";
   if (pub)
-    filters += '  FILTER(CONTAINS(LCASE(STR(?rhName)),"' + pub.toLowerCase().replace(/"/g,'') + '"))\n';
+    filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name ?rhn ] . FILTER(CONTAINS(LCASE(STR(?rhn)),"' + pub.toLowerCase().replace(/"/g,'') + '")) })\n';
 
   var orderBy = (sort === 'title') ? '?title' : 'DESC(?modified)';
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n" +
+    "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-    "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
     "} ORDER BY " + orderBy + " LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -1314,15 +1389,93 @@ function closeSidebarMobile() {
 }
 
 
+
+// ── ANTEPRIMA DATI CSV/XLSX ───────────────────────────────────────────────
+async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '<div class="data-preview-loading">⏳ Caricamento anteprima…</div>';
+
+  // 1. Prova DataStore su dati.gov.it
+  try {
+    const dsUrl = 'https://www.dati.gov.it/opendata/api/3/action/datastore_search?resource_id=' +
+      encodeURIComponent(resourceId) + '&limit=10';
+    const resp = await fetch(dsUrl);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.success && data.result && data.result.records && data.result.records.length > 0) {
+        renderPreviewTable(container, data.result.fields, data.result.records, data.result.total);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // 2. Se CSV diretto e CORS permette, fetch raw
+  if (format && format.toUpperCase() === 'CSV' && resourceUrl) {
+    try {
+      const resp = await fetch(resourceUrl, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) {
+        const text = await resp.text();
+        const rows = parseCSV(text, 11);
+        if (rows.length > 1) {
+          const headers = rows[0].map(function(h,i){ return { id: h||'col'+i }; });
+          const records = rows.slice(1).map(function(r){
+            var obj = {};
+            headers.forEach(function(h,i){ obj[h.id] = r[i]||''; });
+            return obj;
+          });
+          renderPreviewTable(container, headers, records, '?');
+          return;
+        }
+      }
+    } catch(e) {}
+  }
+
+  container.innerHTML = '<div class="data-preview-loading" style="color:var(--text3)">⚠️ Anteprima non disponibile per questa risorsa.</div>';
+}
+
+function parseCSV(text, maxRows) {
+  var lines = text.split('\n').slice(0, maxRows + 1);
+  return lines.map(function(line) {
+    var result = [], current = '', inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (ch === '"') { inQuotes = !inQuotes; }
+      else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+      else { current += ch; }
+    }
+    result.push(current.trim());
+    return result;
+  });
+}
+
+function renderPreviewTable(container, fields, records, total) {
+  var cols = fields.filter(function(f){ return f.id !== '_id'; }).slice(0, 10);
+  var thead = '<tr>' + cols.map(function(f){
+    return '<th>' + (f.id||'').toString().slice(0,20) + '</th>';
+  }).join('') + '</tr>';
+  var tbody = records.map(function(r){
+    return '<tr>' + cols.map(function(f){
+      var v = (r[f.id] !== undefined && r[f.id] !== null) ? String(r[f.id]) : '';
+      return '<td title="' + v.replace(/"/g,'&quot;') + '">' + v.slice(0,40) + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  container.innerHTML =
+    '<div class="data-preview-header">' +
+      '<span>📊 Anteprima dati (' + records.length + ' righe su ' + total + ' totali)</span>' +
+    '</div>' +
+    '<div class="data-preview-table"><table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>';
+}
+
 // ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
 const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
   "PREFIX dct: <http://purl.org/dc/terms/>\n" +
   "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
-const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n";
+const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n";
 const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-  "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+  "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
 function kwFilter(words) {
@@ -1335,7 +1488,9 @@ function kwFilter(words) {
 function buildKeywordQuery(words, offset) {
   return SPARQL_PREFIXES + SPARQL_SELECT +
     "  ?d a dcat:Dataset . ?d dct:title ?title .\n" +
-    SPARQL_OPTIONALS +
+    "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
+    "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
     "  FILTER(" + kwFilter(words) + ")\n" +
     "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
@@ -1344,7 +1499,9 @@ function buildKeywordQuery(words, offset) {
 function buildRecentQuery(offset) {
   return SPARQL_PREFIXES + SPARQL_SELECT +
     "  ?d a dcat:Dataset . ?d dct:title ?title . ?d dct:modified ?modified .\n" +
-    SPARQL_OPTIONALS +
+    "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
+    "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
     "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
@@ -1355,22 +1512,20 @@ function buildCombinedQuery(s, offset) {
     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
   if (s.publisher && s.publisherType === 'uri')
     triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
-  if (s.publisher && s.publisherType === 'name')
-    triples += "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n";
 
   var filters = "  " + LANG_FILTER + "\n";
   if (s.keywords)
     filters += "  FILTER(" + kwFilter(s.keywords.split(/\s+/)) + ")\n";
   if (s.publisher && s.publisherType === 'name')
-    filters += '  FILTER(STR(?rhName) = "' + s.publisher.replace(/"/g,'\"') + '")\n';
+    filters += '  FILTER(EXISTS { ?d dct:rightsHolder [ foaf:name "' + s.publisher.replace(/"/g,'\"') + '" ] })\n';
 
   return "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
     "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT DISTINCT ?d ?title ?description ?pubName ?modified WHERE {\n" +
+    "SELECT DISTINCT ?d ?title ?description ?rhName ?modified WHERE {\n" +
     triples +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-    "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
+    "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     filters +
     "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
