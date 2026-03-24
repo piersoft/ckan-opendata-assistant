@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.22</div>
+  <div class="header-badge">v2026.03.24.23</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -921,21 +921,24 @@ function renderResults(rows, label, append=false) {
 
   unique.forEach(r => {
     const title    = val(r,'title');
-    const org      = val(r,'rhName') || val(r,'pubName');
+    const org      = val(r,'rhName') || val(r,'pubName') || '';
     const notes    = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
-    const fmt      = ''; // formato rimosso dalla query listing, visibile nel dettaglio
     const modified = shortDate(val(r,'modified'));
     const dUri     = val(r,'d');
 
-    html += `<div class="dataset-card" onclick="showDataset('${dUri.replace(/'/g,"\\'")}','${title.replace(/'/g,"\\'")}','${org.replace(/'/g,"\\'")}')">
-      <div class="dataset-title">${title}</div>
-      ${org ? `<div class="dataset-org">📌 ${org}</div>` : ''}
-      ${notes ? `<div class="dataset-notes">${notes.slice(0,200)}</div>` : ''}
-      <div class="dataset-meta">
-        ${fmt ? `<span class="meta-tag format">${fmt}</span>` : ''}
-        ${modified ? `<span class="meta-tag date">📅 ${modified}</span>` : ''}
-      </div>
-    </div>`;
+    // Usa data-attributes per evitare problemi con apostrofi/virgolette nei titoli
+    html += '<div class="dataset-card" ' +
+      'data-uri="' + dUri.replace(/"/g,'&quot;') + '" ' +
+      'data-title="' + title.replace(/"/g,'&quot;') + '" ' +
+      'data-org="' + org.replace(/"/g,'&quot;') + '" ' +
+      'onclick="showDatasetFromCard(this)">' +
+      '<div class="dataset-title">' + title + '</div>' +
+      (org ? '<div class="dataset-org">📌 ' + org + '</div>' : '') +
+      (notes ? '<div class="dataset-notes">' + notes.slice(0,200) + '</div>' : '') +
+      '<div class="dataset-meta">' +
+      (modified ? '<span class="meta-tag date">📅 ' + modified + '</span>' : '') +
+      '</div>' +
+      '</div>';
   });
 
   if (hasMore) {
@@ -956,6 +959,14 @@ function renderResults(rows, label, append=false) {
 }
 
 // ── DETTAGLIO DATASET ─────────────────────────────────────────────────────
+
+function showDatasetFromCard(el) {
+  const uri   = el.dataset.uri;
+  const title = el.dataset.title;
+  const org   = el.dataset.org;
+  showDataset(uri, title, org);
+}
+
 async function showDataset(dUri, title, org) {
   addMsg('📂 <strong>' + title + '</strong>', true);
   addTyping();
