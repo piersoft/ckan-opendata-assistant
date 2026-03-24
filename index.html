@@ -41,6 +41,7 @@
   .chip:hover,.chip.active{background:var(--accent);color:white;border-color:var(--accent)}
   .org-item{display:flex;align-items:center;gap:8px;padding:7px 4px;cursor:pointer;border-radius:var(--radius-sm);font-size:12px;color:var(--text2);transition:all .15s;border-bottom:1px solid var(--surface2)}
   .org-item:hover{color:var(--accent);background:var(--accent-light);padding-left:8px}
+  .org-item.selected{color:var(--accent);background:var(--accent-light);font-weight:600;padding-left:8px;border-left:3px solid var(--accent);}
   .org-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
 
   /* CHAT */
@@ -163,6 +164,42 @@
   .ac-item:hover { background: var(--accent-light); color: var(--accent); }
   .ac-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); }
 
+
+  /* SELEZIONE MULTIPLA SIDEBAR */
+  .quick-btn.selected { background:var(--accent);color:white;border-color:var(--accent); }
+  .quick-btn.selected:hover { background:var(--accent2);border-color:var(--accent2); }
+  .chip.selected { background:var(--accent2);color:white;border-color:var(--accent2); }
+
+  /* BARRA FILTRI ATTIVI */
+  .active-bar {
+    display:none;flex-wrap:wrap;gap:6px;align-items:center;
+    padding:8px 24px;background:var(--accent-light);
+    border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  .active-bar.visible { display:flex; }
+  .active-bar-label { font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-right:4px; }
+  .active-pill {
+    display:flex;align-items:center;gap:4px;padding:3px 10px;
+    border-radius:12px;background:var(--accent);color:white;
+    font-size:11px;font-weight:500;
+  }
+  .active-pill button { background:none;border:none;cursor:pointer;color:white;font-size:13px;line-height:1;padding:0;opacity:.7; }
+  .active-pill button:hover { opacity:1; }
+  .run-query-btn {
+    margin-left:auto;padding:5px 16px;border-radius:20px;
+    background:var(--accent2);color:white;border:none;
+    font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
+    cursor:pointer;transition:all .15s;
+  }
+  .run-query-btn:hover { background:#a03215; }
+  .clear-all-btn {
+    padding:5px 12px;border-radius:20px;background:transparent;
+    color:var(--text3);border:1px solid var(--border);
+    font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;
+    transition:all .15s;
+  }
+  .clear-all-btn:hover { border-color:var(--accent2);color:var(--accent2); }
+
 </style>
 </head>
 <body>
@@ -175,8 +212,17 @@
       <div class="header-subtitle">lod.dati.gov.it · SPARQL · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">SPARQL · No AI · No Proxy</div>
+  <div class="header-badge">v2026.03.24.2</div>
 </header>
+
+
+<!-- BARRA FILTRI ATTIVI -->
+<div class="active-bar" id="activeBar">
+  <span class="active-bar-label">🔎 Filtri attivi:</span>
+  <div id="activePills" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+  <button class="clear-all-btn" onclick="clearAllFilters()">✕ Reset</button>
+  <button class="run-query-btn" onclick="runCombinedQuery()">▶ Cerca</button>
+</div>
 
 <div class="main">
   <aside class="sidebar">
@@ -327,6 +373,104 @@ const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/
 const FT_BASE    = 'http://publications.europa.eu/resource/authority/file-type/';
 const LICENSE_BASE = 'http://publications.europa.eu/resource/authority/licence/';
 const PAGE_SIZE = 8;
+
+
+// ── STATO FILTRI MULTIPLI ─────────────────────────────────────────────────
+const state = {
+  keywords: null,   // stringa libera
+  theme: null,      // { code, label }
+  publisher: null,  // stringa
+};
+
+function updateActiveBar() {
+  const bar   = document.getElementById('activeBar');
+  const pills = document.getElementById('activePills');
+  const entries = [];
+  if (state.keywords)  entries.push({ key:'keywords',  label:'🔍 ' + state.keywords });
+  if (state.theme)     entries.push({ key:'theme',     label:'🗂️ ' + state.theme.label });
+  if (state.publisher) entries.push({ key:'publisher', label:'🏢 ' + state.publisher });
+
+  if (!entries.length) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+  pills.innerHTML = entries.map(e =>
+    `<span class="active-pill">${e.label}
+       <button onclick="removeFilter('${e.key}')">×</button>
+     </span>`
+  ).join('');
+}
+
+function removeFilter(key) {
+  state[key] = null;
+  // deseleziona UI
+  if (key === 'theme') document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  if (key === 'keywords') document.getElementById('searchInput').value = '';
+  if (key === 'publisher') {
+    document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
+  }
+  updateActiveBar();
+}
+
+function clearAllFilters() {
+  state.keywords = null; state.theme = null; state.publisher = null;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('searchInput').value = '';
+  updateActiveBar();
+}
+
+async function runCombinedQuery() {
+  const parts = [];
+  if (state.keywords)  parts.push(`"${state.keywords}"`);
+  if (state.theme)     parts.push(`tema:${state.theme.label}`);
+  if (state.publisher) parts.push(`publisher:${state.publisher}`);
+  const label = parts.join(' · ');
+
+  addMsg(`🔎 <strong>${label}</strong>`, true);
+  addTyping();
+  setBusy(true);
+
+  try {
+    // Costruisci triple
+    let triples = `?d a dcat:Dataset . ?d dct:title ?title .`;
+    if (state.theme) triples += `\n  ?d dcat:theme <${THEME_BASE}${state.theme.code}> .`;
+
+    let filters = `FILTER(LANG(?title)='it'||LANG(?title)='')`;
+    if (state.keywords) {
+      const words = state.keywords.split(/\s+/);
+      const kf = words.map(w => {
+        const wl = w.toLowerCase().replace(/"/g,'');
+        return `(CONTAINS(LCASE(?title),"${wl}")||CONTAINS(LCASE(STR(?pubName)),"${wl}")||CONTAINS(LCASE(STR(?description)),"${wl}"))`;
+      }).join(' && ');
+      filters += `\n  FILTER(${kf})`;
+    }
+    if (state.publisher) {
+      const pl = state.publisher.toLowerCase().replace(/"/g,'');
+      filters += `\n  FILTER(CONTAINS(LCASE(STR(?pubName)),"${pl}"))`;
+    }
+
+    const rows = await sparql(`
+      PREFIX dcat: <http://www.w3.org/ns/dcat#>
+      PREFIX dct:  <http://purl.org/dc/terms/>
+      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+      SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
+        ${triples}
+        OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
+        OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
+        OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
+        OPTIONAL { ?d dct:modified ?modified }
+        ${filters}
+      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE}`);
+    removeTyping();
+    renderResults(rows, label);
+  } catch(e) {
+    removeTyping();
+    addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`);
+  }
+  setBusy(false);
+}
 
 // ── SPARQL FETCH ──────────────────────────────────────────────────────────
 async function sparql(query) {
@@ -503,17 +647,35 @@ async function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
   document.getElementById('searchInput').value = '';
-  setBusy(true);
-  addMsg(`🔍 <strong>${q}</strong>`, true);
-  addTyping();
-  try { await searchByKeyword(q); }
-  catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
-  setBusy(false);
+  state.keywords = q;
+  updateActiveBar();
+  // Se ci sono altri filtri attivi, mostra la barra e aspetta — altrimenti lancia subito
+  if (!state.theme && !state.publisher) {
+    addMsg(`🔍 <strong>${q}</strong>`, true);
+    addTyping();
+    setBusy(true);
+    try { await searchByKeyword(q); }
+    catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
+    setBusy(false);
+  } else {
+    runCombinedQuery();
+  }
 }
 
 function quickSearch(term) {
-  document.getElementById('searchInput').value = term;
-  doSearch();
+  // Azione rapida: imposta keyword e lancia subito
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
+  event?.currentTarget?.classList.add('selected');
+  state.keywords = term;
+  state.theme = null; state.publisher = null;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  updateActiveBar();
+  addMsg(`🔍 <strong>${term}</strong>`, true);
+  addTyping();
+  setBusy(true);
+  searchByKeyword(term)
+    .then(()=>setBusy(false))
+    .catch(e=>{ removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); setBusy(false); });
 }
 
 async function searchByKeyword(q) {
@@ -545,56 +707,39 @@ async function searchByKeyword(q) {
 
 // ── TEMA ──────────────────────────────────────────────────────────────────
 async function searchTheme(code, label) {
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-  event?.target?.classList.add('active');
-  addMsg(`🗂️ Tema DCAT-AP: <strong>${label}</strong>`, true);
-  addTyping();
-  try {
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-        ?d a dcat:Dataset .
-        ?d dct:title ?title .
-        ?d dcat:theme <${THEME_BASE}${code}> .
-        OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-        OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }
-        OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
-        OPTIONAL { ?d dct:modified ?modified }
-        FILTER(LANG(?title)='it'||LANG(?title)='')
-      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE}`);
-    removeTyping();
-    renderResults(rows, label);
-  } catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  event?.target?.classList.add('selected');
+  if (state.theme?.code === code) {
+    state.theme = null;
+    event?.target?.classList.remove('selected');
+    updateActiveBar();
+    return;
+  }
+  state.theme = { code, label };
+  updateActiveBar();
+  runCombinedQuery();
 }
 
 // ── PUBLISHER ─────────────────────────────────────────────────────────────
 async function searchPublisher(pubName) {
-  addMsg(`🏢 Publisher: <strong>${pubName}</strong>`, true);
-  addTyping();
-  try {
-    const rows = await sparql(`
-      PREFIX dcat: <http://www.w3.org/ns/dcat#>
-      PREFIX dct:  <http://purl.org/dc/terms/>
-      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-      SELECT DISTINCT ?d ?title ?description ?pubName ?format ?modified WHERE {
-        ?d a dcat:Dataset .
-        ?d dct:title ?title .
-        ?d dct:publisher ?pub . ?pub foaf:name ?pubName .
-        FILTER(LCASE(STR(?pubName)) = "${pubName.toLowerCase().replace(/"/g,'')}")
-        OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }
-        OPTIONAL { ?d dcat:distribution ?dist . ?dist dct:format ?format }
-        OPTIONAL { ?d dct:modified ?modified }
-        FILTER(LANG(?title)='it'||LANG(?title)='')
-      } ORDER BY DESC(?modified) LIMIT ${PAGE_SIZE}`);
-    removeTyping();
-    renderResults(rows, pubName);
-  } catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
+  if (state.publisher === pubName) {
+    state.publisher = null;
+    document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
+    updateActiveBar();
+    return;
+  }
+  state.publisher = pubName;
+  document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
+  document.querySelectorAll('.org-item').forEach(i=>{
+    if (i.textContent.includes(pubName.split(' ')[0])) i.classList.add('selected');
+  });
+  updateActiveBar();
+  runCombinedQuery();
 }
 
 // ── ULTIMI AGGIORNATI ─────────────────────────────────────────────────────
 async function loadRecent() {
+  clearAllFilters();
   addMsg('🕐 Ultimi dataset aggiornati', true);
   addTyping();
   try {
