@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.60</div>
+  <div class="header-badge">v2026.03.24.62</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -907,21 +907,34 @@ async function runCombinedQuery(offset=0) {
 async function fetchRhNames(uris) {
   if (!uris.length) return {};
   const values = uris.map(u => '<' + u + '>').join(' ');
-  const q = "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+  const q =
+    "PREFIX dct: <http://purl.org/dc/terms/>\n" +
     "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT DISTINCT ?d ?rhName WHERE {\n" +
+    "SELECT ?d ?rhName ?pubName WHERE {\n" +
     "  VALUES ?d { " + values + " }\n" +
     "  ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName .\n" +
+    "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
     "}";
   try {
     const rows = await sparql(q);
-    const map = {};
+    // Accumula per dataset: tutti i rightsHolder e il publisher
+    const acc = {};
     for (const r of rows) {
-      const d = val(r,'d');
-      const rh = val(r,'rhName');
-      if (rh && !map[d]) map[d] = rh; // prendi il primo
+      const d  = val(r,'d');
+      const rh = val(r,'rhName').trim();
+      const pb = val(r,'pubName').trim();
+      if (!acc[d]) acc[d] = { rhs: [], pub: pb };
+      if (rh && !acc[d].rhs.includes(rh)) acc[d].rhs.push(rh);
+      if (pb && !acc[d].pub) acc[d].pub = pb;
     }
-    return map;
+    // Scegli: rightsHolder diverso dal publisher (federatore)
+    const result = {};
+    for (const d of Object.keys(acc)) {
+      const { rhs, pub } = acc[d];
+      const specific = rhs.filter(n => n !== pub);
+      result[d] = (specific.length > 0 ? specific[0] : rhs[0]) || '';
+    }
+    return result;
   } catch(e) { return {}; }
 }
 
