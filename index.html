@@ -625,7 +625,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.53</div>
+  <div class="header-badge">v2026.03.24.54</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -957,36 +957,8 @@ function renderResults(rows, label, append=false) {
     return;
   }
 
-  // Deduplica per URI — aggrega rhName multipli con " / "
-  const seenMap = new Map();
-  const rhNames = new Map();
-  for (const r of rows) {
-    const d = val(r,'d');
-    const rh = val(r,'rhName');
-    if (!seenMap.has(d)) {
-      seenMap.set(d, r);
-      rhNames.set(d, rh ? [rh] : []);
-    } else if (rh && !rhNames.get(d).includes(rh)) {
-      rhNames.get(d).push(rh);
-    }
-  }
-    // Crea righe uniche: preferisci rhName più specifico (diverso da pubName/catalogo federatore)
-  const unique = [...seenMap.values()].map(r => {
-    const d = val(r,'d');
-    const names = rhNames.get(d) || [];
-    const pubName = val(r,'pubName');
-    if (names.length === 0) return r;
-    // Filtra: preferisci nomi diversi dal publisher (catalogo federatore)
-    const specific = names.filter(n => n !== pubName);
-    const best = specific.length > 0 ? specific : names;
-    const clone = JSON.parse(JSON.stringify(r));
-    if (clone.rhName) {
-      clone.rhName.value = best.join(' / ');
-    } else {
-      clone.rhName = { type: 'literal', value: best.join(' / ') };
-    }
-    return clone;
-  });
+  // Ogni riga è già unica per ?d grazie al GROUP BY nella query
+  const unique = rows;
 
   const hasMore = unique.length >= PAGE_SIZE;
   const currentOffset = lastQuery ? lastQuery.offset : 0;
@@ -1001,7 +973,7 @@ function renderResults(rows, label, append=false) {
 
   unique.forEach(r => {
     const title    = val(r,'title');
-    const org      = val(r,'rhName') || val(r,'pubName') || '';
+    const org      = val(r,'rhName') || '';
     const notes    = val(r,'description').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,'').trim();
     const modified = shortDate(val(r,'modified'));
     const dUri     = val(r,'d');
@@ -1605,11 +1577,11 @@ const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
   "PREFIX dct: <http://purl.org/dc/terms/>\n" +
   "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n";
-const SPARQL_SELECT = "SELECT DISTINCT ?d ?title ?description ?rhName ?pubName ?modified WHERE {\n";
+const SPARQL_SELECT = "SELECT ?d (MIN(?title) AS ?title) (MIN(?description) AS ?description) (MIN(?rhName) AS ?rhName) (MAX(?modified) AS ?modified) WHERE {\n";
+const SPARQL_GROUPBY = "} GROUP BY ?d ORDER BY DESC(MAX(?modified)) LIMIT ";
 const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
   "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
-  "  OPTIONAL { ?d dct:publisher ?pub . ?pub foaf:name ?pubName }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
 function kwFilter(words) {
@@ -1627,7 +1599,7 @@ function buildKeywordQuery(words, offset) {
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
     "  FILTER(" + kwFilter(words) + ")\n" +
-    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+    SPARQL_GROUPBY + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildRecentQuery(offset) {
@@ -1637,7 +1609,7 @@ function buildRecentQuery(offset) {
     "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
-    "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+    SPARQL_GROUPBY + FETCH_SIZE + " OFFSET " + offset;
 }
 
 function buildCombinedQuery(s, offset) {
