@@ -517,9 +517,13 @@ function quickSearch(term) {
 }
 
 async function searchByKeyword(q) {
-  const filter = q.split(/\s+/).map(w =>
-    `CONTAINS(LCASE(?title), "${w.toLowerCase().replace(/"/g,'')}")`
-  ).join(' && ');
+  // Ogni parola viene cercata nel titolo OPPURE nel publisher (OR)
+  // così "rifiuti puglia" trova dataset con "rifiuti" nel titolo e "puglia" nel publisher
+  const words = q.trim().split(/\s+/);
+  const filter = words.map(w => {
+    const wl = w.toLowerCase().replace(/"/g,'');
+    return `(CONTAINS(LCASE(?title), "${wl}") || CONTAINS(LCASE(STR(?pubName)), "${wl}") || CONTAINS(LCASE(STR(?description)), "${wl}"))`;
+  }).join(' && ');
 
   const rows = await sparql(`
     PREFIX dcat: <http://www.w3.org/ns/dcat#>
