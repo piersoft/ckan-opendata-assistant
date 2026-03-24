@@ -570,7 +570,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.32</div>
+  <div class="header-badge">v2026.03.24.33</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1034,7 +1034,7 @@ async function showDataset(dUri, title, org) {
             '</div>' +
             '<div style="display:flex;gap:6px">' +
             (canPreview ? '<button class="res-btn preview" onclick="tryDataPreview(\'' + (d.resourceId||'').replace(/'/g,"\'") + '\',\'' + d.url.replace(/'/g,"\'") + '\',\'' + fmt + '\',\'' + pid + '\')" style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
-            '<button class="res-btn open" onclick="window.open(\'' + d.url.replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
+            '<button class="res-btn open" onclick="window.open(\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
             '</div>' +
             (canPreview ? '<div id="' + pid + '" style="grid-column:1/-1;width:100%;margin-top:4px"></div>' : '') +
             '</div>';
