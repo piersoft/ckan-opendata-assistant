@@ -462,7 +462,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.10</div>
+  <div class="header-badge">v2026.03.24.11</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1193,17 +1193,21 @@ async function loadAcCache() {
     PREFIX dcat: <http://www.w3.org/ns/dcat#>
     PREFIX dct:  <http://purl.org/dc/terms/>
     PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-    SELECT ?pubName (COUNT(DISTINCT ?d) AS ?count) WHERE {
+    SELECT ?name ?identifier (COUNT(DISTINCT ?d) AS ?count) WHERE {
       ?d a dcat:Dataset .
-      ?d dct:publisher ?pub . ?pub foaf:name ?pubName .
-    } GROUP BY ?pubName ORDER BY DESC(?count) LIMIT 300`);
-  // Deduplica per identifier IPA, tieni il nome più frequente
+      ?d dct:rightsHolder ?rh .
+      ?rh foaf:name ?name .
+      ?rh dct:identifier ?identifier .
+    } GROUP BY ?name ?identifier ORDER BY DESC(?count) LIMIT 500`);
+  // Deduplica per identifier IPA, tieni il nome più frequente per codice
   const byId = new Map();
   rows.forEach(r => {
     const id = val(r,'identifier');
     const n  = val(r,'name');
     const c  = parseInt(val(r,'count')||'0');
-    if (!byId.has(id) || c > byId.get(id).count) byId.set(id, { name: n, identifier: id, count: c });
+    if (!byId.has(id) || c > byId.get(id).count) {
+      byId.set(id, { name: n, identifier: id, count: c });
+    }
   });
   acCache = [...byId.values()].sort((a,b) => b.count - a.count);
   return acCache;
