@@ -611,6 +611,38 @@ header{
     .send-btn, .adv-btn.primary { background: ButtonText; color: ButtonFace; }
   }
 
+
+  .api-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: var(--radius);
+    background: #1A3A5C; color: white; font-size: 13px; font-weight: 700;
+    cursor: pointer; border: none; font-family: var(--font);
+    text-decoration: none; margin-top: 10px;
+    letter-spacing: .03em;
+  }
+  .api-btn:hover { background: #0D2A47; }
+  .api-section {
+    margin-top: 12px; padding: 10px 14px;
+    background: #EEF4FB; border-radius: var(--radius);
+    border-left: 3px solid #1A3A5C;
+  }
+  .api-section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: #1A3A5C; margin-bottom: 6px;
+  }
+
+
+  .hvd-section { margin-top: 14px; }
+  .hvd-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid #F4A800; color: #7A4F00;
+    background: #FFF8E1; margin: 2px 2px 2px 0; transition: all .15s;
+    min-height: 32px;
+  }
+  .hvd-chip:hover { background: #F4A800; color: white; }
+  .hvd-chip.active { background: #F4A800; color: white; border-color: #E09600; }
+
 </style>
 </head>
 <body>
@@ -625,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.24.62</div>
+  <div class="header-badge">v2026.03.25.1</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -788,6 +820,15 @@ header{
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────────────
+const HVD_BASE = 'http://data.europa.eu/bna/';
+const HVD_CATS = [
+  { code: 'c_ac64a52d', label: '🗺️ Geospaziali' },
+  { code: 'c_dd313021', label: '🌍 Terra e Ambiente' },
+  { code: 'c_e1da4e07', label: '📊 Statistici' },
+  { code: 'c_164e0bf5', label: '🌤️ Meteorologici' },
+  { code: 'c_b79e35eb', label: '🚗 Mobilità' },
+  { code: 'c_a9135398', label: '🏢 Imprese' },
+];
 const SPARQL  = 'https://lod.dati.gov.it/sparql';
 const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/';
 const FT_BASE    = 'http://publications.europa.eu/resource/authority/file-type/';
@@ -807,7 +848,8 @@ const state = {
   theme: null,         // { code, label }
   publisher: null,     // URI catalogo o nome stringa
   publisherLabel: null,// titolo leggibile
-  publisherType: null  // 'uri' | 'name'
+  publisherType: null,  // 'uri' | 'name'
+  hvd: null             // HVD category code
 };
 
 function updateActiveBar() {
@@ -855,6 +897,7 @@ async function runCombinedQuery(offset=0) {
   const parts = [];
   if (state.keywords)  parts.push('"' + state.keywords + '"');
   if (state.theme)     parts.push('tema:' + state.theme.label);
+  if (state.hvd) { const h = HVD_CATS.find(x=>x.code===state.hvd); if(h) parts.push('HVD:' + h.label); }
   if (state.publisher) parts.push('🏛️ ' + (state.publisherLabel || state.publisher));
   const label = parts.join(' · ');
 
@@ -867,6 +910,8 @@ async function runCombinedQuery(offset=0) {
     var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
     if (state.theme)
       triples += "  ?d dcat:theme <" + THEME_BASE + state.theme.code + "> .\n";
+    if (state.hvd)
+      triples += "  ?d <http://data.europa.eu/r5r/hvdCategory> <" + HVD_BASE + state.hvd + "> .\n";
     if (state.publisher && state.publisherType === 'uri')
       triples += "  <" + state.publisher + "> dcat:dataset ?d .\n";
     if (state.publisher && state.publisherType === 'name')
@@ -1079,7 +1124,7 @@ async function showDataset(dUri, title, org) {
       "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
       "PREFIX dct: <http://purl.org/dc/terms/>\n" +
       "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-      "SELECT ?description ?theme ?license ?modified ?distTitle ?format ?accessURL ?downloadURL ?resourceId WHERE {\n" +
+      "SELECT ?description ?theme ?license ?modified ?distTitle ?format ?accessURL ?downloadURL ?resourceId ?dsTitle ?endpointURL ?endpointDesc WHERE {\n" +
       "  BIND(<" + dUri + "> AS ?d)\n" +
       "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
       "  OPTIONAL { ?d dcat:theme ?theme }\n" +
@@ -1091,6 +1136,13 @@ async function showDataset(dUri, title, org) {
       "    OPTIONAL { ?dist dct:format ?format }\n" +
       "    OPTIONAL { ?dist dcat:accessURL ?accessURL }\n" +
       "    OPTIONAL { ?dist dct:identifier ?resourceId }\n" +
+      "  }\n" +
+      "  OPTIONAL {\n" +
+      "    ?ds a <http://www.w3.org/ns/dcat#DataService> .\n" +
+      "    ?ds <http://www.w3.org/ns/dcat#servesDataset> ?d .\n" +
+      "    OPTIONAL { ?ds <http://purl.org/dc/terms/title> ?dsTitle FILTER(LANG(?dsTitle)='it'||LANG(?dsTitle)='') }\n" +
+      "    OPTIONAL { ?ds <http://www.w3.org/ns/dcat#endpointURL> ?endpointURL }\n" +
+      "    OPTIONAL { ?ds <http://www.w3.org/ns/dcat#endpointDescription> ?endpointDesc }\n" +
       "  }\n" +
       "} LIMIT 30"
     );
@@ -1116,6 +1168,18 @@ async function showDataset(dUri, title, org) {
       });
     });
     const dists = [...distMap.values()];
+
+    // DataService collegati
+    const dsMap = new Map();
+    rows.forEach(r => {
+      const eu = val(r,'endpointURL');
+      if (eu && !dsMap.has(eu)) dsMap.set(eu, {
+        title: val(r,'dsTitle') || 'API',
+        endpointURL: eu,
+        endpointDesc: val(r,'endpointDesc')
+      });
+    });
+    const dataServices = [...dsMap.values()];
 
     // Genera ID unici per preview container
     var previewId = 'preview_' + Math.random().toString(36).slice(2);
@@ -1153,6 +1217,22 @@ async function showDataset(dUri, title, org) {
         }).join('')
       : '<div style="font-size:12px;color:var(--text3)">Nessuna distribuzione trovata.</div>';
 
+    // Sezione DataService
+    var dsHtml = '';
+    if (dataServices.length > 0) {
+      dsHtml = '<div class="api-section">' +
+        '<div class="api-section-label">🔌 API / Data Service</div>' +
+        dataServices.map(function(ds) {
+          const docUrl = ds.endpointDesc || ds.endpointURL;
+          return '<div style="margin-bottom:6px">' +
+            '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">' + ds.title + '</div>' +
+            '<a href="' + docUrl + '" target="_blank" class="api-btn">📄 Documentazione API ↗</a>' +
+            (ds.endpointURL !== docUrl ? ' <a href="' + ds.endpointURL + '" target="_blank" class="api-btn" style="background:#2E7D32">⚡ Endpoint ↗</a>' : '') +
+            '</div>';
+        }).join('') +
+        '</div>';
+    }
+
     var html = '<div class="detail-panel">' +
       '<div class="detail-header">' +
         '<h3>' + title + '</h3>' +
@@ -1160,6 +1240,7 @@ async function showDataset(dUri, title, org) {
       '</div>' +
       '<div class="detail-body">' +
         (desc ? '<div class="detail-desc">' + desc.slice(0,500) + (desc.length>500?'…':'') + '</div>' : '') +
+        dsHtml +
         (themes.length ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">' + themes.map(function(t){ return '<span class="meta-tag">' + fmtLabel(t) + '</span>'; }).join('') + '</div>' : '') +
         '<div class="resources-label">Distribuzioni (' + dists.length + ')</div>' +
         resHtml +
@@ -1629,6 +1710,30 @@ function renderPreviewTable(container, fields, records, total) {
     '<div class="data-preview-table"><table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>';
 }
 
+
+// ── HVD CATEGORIES ───────────────────────────────────────────────────────
+function initHvdChips() {
+  const c = document.getElementById('hvdChips');
+  if (!c) return;
+  c.innerHTML = HVD_CATS.map(h =>
+    '<span class="hvd-chip" data-code="' + h.code + '" onclick="selectHvd(this)">' + h.label + '</span>'
+  ).join('');
+}
+
+function selectHvd(el) {
+  const code = el.dataset.code;
+  if (state.hvd === code) {
+    state.hvd = null;
+    el.classList.remove('active');
+  } else {
+    document.querySelectorAll('.hvd-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    state.hvd = code;
+  }
+  updateActiveBar();
+  runCombinedQuery(0);
+}
+
 // ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
 const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1671,6 +1776,8 @@ function buildCombinedQuery(s, offset) {
   var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
   if (s.theme)
     triples += "  ?d dcat:theme <" + THEME_BASE + s.theme.code + "> .\n";
+  if (s.hvd)
+    triples += "  ?d <http://data.europa.eu/r5r/hvdCategory> <" + HVD_BASE + s.hvd + "> .\n";
   if (s.publisher && s.publisherType === 'uri')
     triples += "  <" + s.publisher + "> dcat:dataset ?d .\n";
   if (s.publisher && s.publisherType === 'name')
