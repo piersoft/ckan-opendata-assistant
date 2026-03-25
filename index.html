@@ -209,8 +209,8 @@ header{
 .msg.user .msg-bubble{background:var(--primary-dark);color:white}
 
 /* Risultati */
-.results-container{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-.results-header{
+.results-container{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;padding:0 16px 16px}
+.results-header{padding:12px 0 8px;
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:10px;font-size:15px;color:var(--text3);
   padding-bottom:7px;border-bottom:1px solid var(--border);
@@ -714,9 +714,14 @@ header{
   /* Messaggi bot con contenuto largo: tutta la larghezza */
   .msg.bot.wide {
     align-items: stretch;
+    gap: 0;
+  }
+  .msg.bot.wide .msg-avatar {
+    display: none;
   }
   .msg.bot.wide .msg-bubble {
     max-width: 100%;
+    width: 100%;
     padding: 0;
     background: transparent;
     box-shadow: none;
@@ -737,7 +742,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.20</div>
+  <div class="header-badge">v2026.03.25.22</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
