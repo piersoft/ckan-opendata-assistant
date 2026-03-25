@@ -742,7 +742,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.22</div>
+  <div class="header-badge">v2026.03.25.23</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -2112,7 +2112,12 @@ async function loadOrgs(offset=0) {
     const prevBtn = list.querySelector('.load-more-orgs');
     if (prevBtn) prevBtn.remove();
 
-    const fragment = rows.map(r => {
+    const seenOrgs = new Set();
+    const fragment = rows.filter(r => {
+      const n = val(r,'name').trim().toLowerCase();
+      if (seenOrgs.has(n)) return false;
+      seenOrgs.add(n); return true;
+    }).map(r => {
       const name = val(r,'name').trim();
       const count = parseInt(val(r,'count'));
       const safeName = name.replace(/'/g,"\'");
