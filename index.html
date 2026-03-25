@@ -657,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.6</div>
+  <div class="header-badge">v2026.03.25.8</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -824,13 +824,33 @@ header{
       </div>
     </div>
 
-    <div class="input-bar">
-      <div class="input-wrap">
-        <span style="font-size:16px;color:var(--text3)">🔍</span>
-        <input type="text" id="searchInput" aria-label="Cerca dataset nel catalogo nazionale" placeholder="Cerca dataset… es. 'rifiuti Puglia', 'ISTAT popolazione'" />
+    <div class="input-bar" style="padding:0;gap:0;background:transparent;border:none;box-shadow:none">
+      <div class="wizard-wrap">
+        <div class="wizard-step">
+          <div class="wizard-step-num">1</div>
+          <div class="wizard-step-label">Cosa</div>
+          <input type="text" id="searchInput"
+                 aria-label="Cosa vuoi cercare"
+                 placeholder="es. sinistri stradali, rifiuti, bilancio…"
+                 onkeydown="if(event.key==='Enter') doSearch()"
+                 autocomplete="off" />
+        </div>
+        <div class="wizard-step" style="position:relative">
+          <div class="wizard-step-num">2</div>
+          <div class="wizard-step-label">Chi</div>
+          <input type="text" id="wizardOrg"
+                 aria-label="Amministrazione (opzionale)"
+                 placeholder="Tutte le amministrazioni…"
+                 oninput="wizardOrgAc(this.value)"
+                 onkeydown="if(event.key==='Enter') doSearch()"
+                 autocomplete="off" />
+          <div class="ac-dropdown" id="wizardOrgList"></div>
+        </div>
+        <div style="display:flex;gap:8px;padding:8px 12px">
+          <button class="wizard-search-btn" onclick="doSearch()" aria-label="Avvia ricerca">🔍 Cerca</button>
+          <button class="adv-toggle" id="advToggle" onclick="toggleAdv()" aria-expanded="false" aria-controls="advPanel">⚙️ Avanzata</button>
+        </div>
       </div>
-      <button class="send-btn" id="sendBtn" onclick="doSearch()" aria-label="Avvia ricerca">➤</button>
-      <button class="adv-toggle" id="advToggle" onclick="toggleAdv()" aria-expanded="false" aria-controls="advPanel">⚙️ Avanzata</button>
     </div>
   </div>
 </div>
@@ -955,24 +975,7 @@ async function runCombinedQuery(offset=0) {
       "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 
     let rows = await sparql(q);
-    // Fallback OR se AND non trova nulla e ci sono keywords
-    if (!rows.length && state.keywords && state.keywords.split(/\s+/).length > 1 && offset === 0) {
-      const words = state.keywords.split(/\s+/).filter(Boolean);
-      filters = filters.replace(
-        'FILTER(' + kwFilter(words) + ')',
-        'FILTER(' + kwFilterOr(words) + ')'
-      );
-      q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
-        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
-        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-        "SELECT DISTINCT ?d ?title ?description ?modified WHERE {\n" +
-        triples +
-        "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
-        "  OPTIONAL { ?d dct:modified ?modified }\n" +
-        filters +
-        "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
-      rows = await sparql(q);
-    }
+
     removeTyping();
     const uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
     const rhMap = await fetchRhNames(uris);
@@ -1298,14 +1301,43 @@ async function showDataset(dUri, title, org) {
 
 // ── RICERCA PER KEYWORD ───────────────────────────────────────────────────
 async function doSearch() {
-  const q = document.getElementById('searchInput').value.trim();
-  if (!q) return;
-  document.getElementById('searchInput').value = '';
-  state.keywords = q;
+  const q    = document.getElementById('searchInput').value.trim();
+  const orgEl = document.getElementById('wizardOrg');
+  const org  = orgEl ? orgEl.value.trim() : '';
+
+  if (!q && !org) return;
+
+  // Imposta stato publisher se è stato specificato un ente
+  if (org) {
+    state.publisher = org;
+    state.publisherLabel = org;
+    state.publisherType = 'name';
+  } else {
+    state.publisher = null;
+    state.publisherLabel = null;
+    state.publisherType = null;
+  }
+
+  if (q) {
+    state.keywords = q;
+  } else {
+    state.keywords = null;
+  }
+
   updateActiveBar();
-  addMsg('🔍 <strong>' + q + '</strong>', true);
-  if (!state.theme && !state.publisher && !state.hvd) {
-    await searchByKeyword(q.split(/\s+/).filter(Boolean), 0);
+
+  const label = [q, org ? '🏛️ ' + org : ''].filter(Boolean).join(' · ');
+  addMsg('🔍 <strong>' + label + '</strong>', true);
+
+  if (!state.theme && !state.hvd) {
+    // Solo keyword + eventuale publisher
+    if (q) {
+      const words = q.split(/\s+/).filter(Boolean);
+      await searchByKeyword(words, 0);
+    } else {
+      // Solo publisher, nessuna keyword
+      runCombinedQuery(0);
+    }
   } else {
     runCombinedQuery(0);
   }
@@ -1335,13 +1367,21 @@ async function searchByKeyword(words, offset=0) {
   addTyping();
   setBusy(true);
   try {
-    let rows = await sparql(buildKeywordQuery(wordsArr, offset));
-    // Fallback OR se AND non trova nulla con più parole
-    if (!rows.length && wordsArr.length > 1 && offset === 0) {
-      const sigWords = wordsArr.filter(w => w.length >= 3 && !STOPWORDS.has(w.toLowerCase()));
-      if (sigWords.length > 0) rows = await sparql(buildKeywordQuery(wordsArr, offset, true));
-    }
+    const rows = await sparql(buildKeywordQuery(wordsArr, offset));
     removeTyping();
+    if (!rows.length && offset === 0) {
+      addMsg(
+        '<div class="no-results">' +
+        '<div class="icon">🔎</div>' +
+        'Nessun dataset trovato per <strong>"' + label + '"</strong>.<br><br>' +
+        '<span style="font-size:13px;color:var(--text2)">💡 Suggerimento: prova con parole più semplici nel titolo ' +
+        '(es. <em>"sinistri stradali"</em>), poi affina con i filtri ' +
+        '<strong>Amministrazione</strong> o <strong>Tema</strong> nella sidebar.</span>' +
+        '</div>'
+      );
+      setBusy(false);
+      return;
+    }
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
     const _rhMap = await fetchRhNames(_uris);
     renderResults(rows, label, offset > 0, _rhMap);
@@ -1786,6 +1826,60 @@ function selectHvd(el) {
   runCombinedQuery(0);
 }
 
+
+// ── WIZARD AUTOCOMPLETE ───────────────────────────────────────────────────
+let wizardOrgTimer = null;
+let wizardOrgSelected = null; // { name, type } — nome ente selezionato
+
+function wizardOrgAc(q) {
+  clearTimeout(wizardOrgTimer);
+  wizardOrgSelected = null;
+  const dropdown = document.getElementById('wizardOrgList');
+  if (!q || q.length < 2) {
+    dropdown.classList.remove('open');
+    dropdown.innerHTML = '';
+    return;
+  }
+  wizardOrgTimer = setTimeout(async () => {
+    try {
+      const ql = q.toLowerCase().replace(/"/g, '');
+      const rows = await sparql(
+        "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+        "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+        "  ?d a dcat:Dataset .\n" +
+        "  ?d dct:rightsHolder ?rh .\n" +
+        "  ?rh foaf:name ?name .\n" +
+        '  FILTER(CONTAINS(LCASE(STR(?name)),"' + ql + '"))\n' +
+        "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 10"
+      );
+      if (!rows.length) { dropdown.classList.remove('open'); return; }
+      const seen = new Set();
+      const unique = [];
+      rows.forEach(r => {
+        const n = val(r,'name').trim();
+        if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); unique.push({ name: n, count: parseInt(val(r,'count')||'0') }); }
+      });
+      dropdown.innerHTML = unique.map(function(m) {
+        return '<div class="ac-item" data-name="' + m.name.replace(/"/g,'&quot;') + '" onclick="selectWizardOrg(this)">' +
+          '<span>' + m.name + '</span>' +
+          '<span class="ac-count">' + m.count.toLocaleString('it') + ' ds</span>' +
+          '</div>';
+      }).join('');
+      dropdown.classList.add('open');
+    } catch(e) { dropdown.classList.remove('open'); }
+  }, 350);
+}
+
+function selectWizardOrg(el) {
+  const name = el.dataset.name;
+  document.getElementById('wizardOrg').value = name;
+  wizardOrgSelected = { name };
+  document.getElementById('wizardOrgList').classList.remove('open');
+  document.getElementById('wizardOrgList').innerHTML = '';
+}
+
 // ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
 const LANG_FILTER = "FILTER(LANG(?title)='it'||LANG(?title)='')";
 const SPARQL_PREFIXES = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
@@ -1811,13 +1905,14 @@ function kwFilterOr(words) {
 function kwFilter(words) {
   return words.map(function(w) {
     var wl = w.toLowerCase().replace(/"/g, "");
-    return "(CONTAINS(LCASE(?title),\"" + wl + "\")||CONTAINS(LCASE(STR(?description)),\"" + wl + "\"))";
+    return '(CONTAINS(LCASE(?title),"' + wl + '")||CONTAINS(LCASE(STR(?description)),"' + wl + '")||CONTAINS(LCASE(STR(?kw)),"' + wl + '"))';
   }).join(" && ");
 }
 
 function buildKeywordQuery(words, offset, useOr=false) {
   return SPARQL_PREFIXES + SPARQL_SELECT +
     "  ?d a dcat:Dataset . ?d dct:title ?title .\n" +
+    "  OPTIONAL { ?d <http://www.w3.org/ns/dcat#keyword> ?kw }\n" +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
