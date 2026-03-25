@@ -657,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.3</div>
+  <div class="header-badge">v2026.03.25.4</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -954,7 +954,25 @@ async function runCombinedQuery(offset=0) {
       filters +
       "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 
-    const rows = await sparql(q);
+    let rows = await sparql(q);
+    // Fallback OR se AND non trova nulla e ci sono keywords
+    if (!rows.length && state.keywords && state.keywords.split(/\s+/).length > 1 && offset === 0) {
+      const words = state.keywords.split(/\s+/).filter(Boolean);
+      filters = filters.replace(
+        'FILTER(' + kwFilter(words) + ')',
+        'FILTER(' + kwFilterOr(words) + ')'
+      );
+      q = "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+        "SELECT DISTINCT ?d ?title ?description ?modified WHERE {\n" +
+        triples +
+        "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+        "  OPTIONAL { ?d dct:modified ?modified }\n" +
+        filters +
+        "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
+      rows = await sparql(q);
+    }
     removeTyping();
     const uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
     const rhMap = await fetchRhNames(uris);
@@ -1285,16 +1303,12 @@ async function doSearch() {
   document.getElementById('searchInput').value = '';
   state.keywords = q;
   updateActiveBar();
-  // Se ci sono altri filtri attivi, mostra la barra e aspetta — altrimenti lancia subito
-  if (!state.theme && !state.publisher) {
-    addMsg(`🔍 <strong>${q}</strong>`, true);
-    addTyping();
-    setBusy(true);
-    try { await searchByKeyword(q); }
-    catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
-    setBusy(false);
+  if (!state.theme && !state.publisher && !state.hvd) {
+    addMsg('🔍 <strong>' + q + '</strong>', true);
+    const words = q.split(/\s+/).filter(Boolean);
+    await searchByKeyword(words, 0);
   } else {
-    runCombinedQuery();
+    runCombinedQuery(0);
   }
 }
 
