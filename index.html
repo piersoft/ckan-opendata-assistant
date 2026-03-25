@@ -657,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.2</div>
+  <div class="header-badge">v2026.03.25.3</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1769,21 +1769,28 @@ const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
+function kwFilterOr(words) {
+  return words.map(function(w) {
+    var wl = w.toLowerCase().replace(/"/g, "");
+    return '(CONTAINS(LCASE(?title),"' + wl + '")||CONTAINS(LCASE(STR(?description)),"' + wl + '"))';
+  }).join(" || ");
+}
+
 function kwFilter(words) {
   return words.map(function(w) {
     var wl = w.toLowerCase().replace(/"/g, "");
-    return "(CONTAINS(LCASE(?title),\"" + wl + "\")||CONTAINS(LCASE(STR(?pubName)),\"" + wl + "\")||CONTAINS(LCASE(STR(?description)),\"" + wl + "\"))";
+    return "(CONTAINS(LCASE(?title),\"" + wl + "\")||CONTAINS(LCASE(STR(?description)),\"" + wl + "\"))";
   }).join(" && ");
 }
 
-function buildKeywordQuery(words, offset) {
+function buildKeywordQuery(words, offset, useOr=false) {
   return SPARQL_PREFIXES + SPARQL_SELECT +
     "  ?d a dcat:Dataset . ?d dct:title ?title .\n" +
     "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
-    "  FILTER(" + kwFilter(words) + ")\n" +
+    "  FILTER(" + (useOr ? kwFilterOr(words) : kwFilter(words)) + ")\n" +
     "} ORDER BY DESC(?modified) LIMIT " + FETCH_SIZE + " OFFSET " + offset;
 }
 
