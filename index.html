@@ -209,7 +209,7 @@ header{
 .msg.user .msg-bubble{background:var(--primary-dark);color:white}
 
 /* Risultati */
-.results-container{width:100%}
+.results-container{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
 .results-header{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:10px;font-size:15px;color:var(--text3);
@@ -710,21 +710,17 @@ header{
   }
 
 
-  /* Dettaglio dataset a tutta larghezza */
-  .msg-bubble:has(.detail-panel) {
-    max-width: 98%;
+
+  /* Messaggi bot con contenuto largo: tutta la larghezza */
+  .msg.bot.wide {
+    align-items: stretch;
+  }
+  .msg.bot.wide .msg-bubble {
+    max-width: 100%;
     padding: 0;
     background: transparent;
     box-shadow: none;
-  }
-  .msg-bubble:has(.results-container) {
-    max-width: 98%;
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-  .msg-bubble:has(.no-results) {
-    max-width: 98%;
+    flex: 1;
   }
 
 </style>
@@ -741,7 +737,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.18</div>
+  <div class="header-badge">v2026.03.25.20</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1159,7 +1155,8 @@ function addMsg(html, isUser = false) {
   document.getElementById('welcomeScreen')?.remove();
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
-  div.className = 'msg ' + (isUser ? 'user' : 'bot');
+  const isWide = !isUser && (html.includes('detail-panel') || html.includes('results-container') || html.includes('no-results'));
+  div.className = 'msg ' + (isUser ? 'user' : 'bot') + (isWide ? ' wide' : '');
   div.innerHTML = `<div class="msg-avatar">${isUser ? '👤' : '🏛️'}</div><div class="msg-bubble">${html}</div>`;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
@@ -2224,4 +2221,3 @@ initHvdChips();
 </script>
 </body>
 </html>
-
