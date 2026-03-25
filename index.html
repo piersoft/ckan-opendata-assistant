@@ -657,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.5</div>
+  <div class="header-badge">v2026.03.25.6</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1338,7 +1338,8 @@ async function searchByKeyword(words, offset=0) {
     let rows = await sparql(buildKeywordQuery(wordsArr, offset));
     // Fallback OR se AND non trova nulla con più parole
     if (!rows.length && wordsArr.length > 1 && offset === 0) {
-      rows = await sparql(buildKeywordQuery(wordsArr, offset, true));
+      const sigWords = wordsArr.filter(w => w.length >= 3 && !STOPWORDS.has(w.toLowerCase()));
+      if (sigWords.length > 0) rows = await sparql(buildKeywordQuery(wordsArr, offset, true));
     }
     removeTyping();
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
@@ -1795,8 +1796,13 @@ const SPARQL_OPTIONALS =
   "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
   "  OPTIONAL { ?d dct:modified ?modified }\n";
 
+// Stopword italiane da ignorare nel fallback OR
+const STOPWORDS = new Set(['il','lo','la','i','gli','le','un','una','uno','di','a','da','in','con','su','per','tra','fra','e','o','ma','non','che','è','si','del','dei','delle','della','degli','al','ai','alle','alla','agli','nel','nei','nelle','nella','negli','sul','sui','sulle','sulla','sugli','col','coi']);
+
 function kwFilterOr(words) {
-  return words.map(function(w) {
+  const significant = words.filter(w => w.length >= 3 && !STOPWORDS.has(w.toLowerCase()));
+  const useWords = significant.length > 0 ? significant : words;
+  return useWords.map(function(w) {
     var wl = w.toLowerCase().replace(/"/g, "");
     return '(CONTAINS(LCASE(?title),"' + wl + '")||CONTAINS(LCASE(STR(?description)),"' + wl + '"))';
   }).join(" || ");
