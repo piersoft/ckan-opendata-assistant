@@ -657,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.4</div>
+  <div class="header-badge">v2026.03.25.5</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1303,10 +1303,9 @@ async function doSearch() {
   document.getElementById('searchInput').value = '';
   state.keywords = q;
   updateActiveBar();
+  addMsg('🔍 <strong>' + q + '</strong>', true);
   if (!state.theme && !state.publisher && !state.hvd) {
-    addMsg('🔍 <strong>' + q + '</strong>', true);
-    const words = q.split(/\s+/).filter(Boolean);
-    await searchByKeyword(words, 0);
+    await searchByKeyword(q.split(/\s+/).filter(Boolean), 0);
   } else {
     runCombinedQuery(0);
   }
@@ -1329,14 +1328,27 @@ function quickSearch(term) {
     .catch(e=>{ removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); setBusy(false); });
 }
 
-async function searchByKeyword(q, offset=0) {
-  lastQuery = { type:'keyword', params:{ q }, offset, label:q };
-  const words = q.trim().split(/\s+/);
-  const rows = await sparql(buildKeywordQuery(words, offset));
-  removeTyping();
+async function searchByKeyword(words, offset=0) {
+  const label = Array.isArray(words) ? words.join(' ') : words;
+  const wordsArr = Array.isArray(words) ? words : words.trim().split(/\s+/);
+  lastQuery = { type:'keyword', params:{ q: label }, offset, label };
+  addTyping();
+  setBusy(true);
+  try {
+    let rows = await sparql(buildKeywordQuery(wordsArr, offset));
+    // Fallback OR se AND non trova nulla con più parole
+    if (!rows.length && wordsArr.length > 1 && offset === 0) {
+      rows = await sparql(buildKeywordQuery(wordsArr, offset, true));
+    }
+    removeTyping();
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
     const _rhMap = await fetchRhNames(_uris);
-  renderResults(rows, q, offset > 0, _rhMap);
+    renderResults(rows, label, offset > 0, _rhMap);
+  } catch(e) {
+    removeTyping();
+    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
+  }
+  setBusy(false);
 }
 
 // ── TEMA ──────────────────────────────────────────────────────────────────
