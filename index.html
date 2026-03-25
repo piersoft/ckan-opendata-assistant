@@ -701,6 +701,14 @@ header{
   }
   .wizard-search-btn:hover { background: var(--primary-dark); }
 
+
+  .dataset-kws { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .kw-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border); font-family: var(--mono);
+  }
+
 </style>
 </head>
 <body>
@@ -715,7 +723,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.14</div>
+  <div class="header-badge">v2026.03.25.17</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1036,8 +1044,8 @@ async function runCombinedQuery(offset=0) {
 
     removeTyping();
     const uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
-    const rhMap = await fetchRhNames(uris);
-    renderResults(rows, label, offset > 0, rhMap);
+    const [rhMap, kwMap] = await Promise.all([fetchRhNames(uris), fetchKeywords(uris)]);
+    renderResults(rows, label, offset > 0, rhMap, kwMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
@@ -1079,6 +1087,33 @@ async function fetchRhNames(uris) {
       result[d] = (specific.length > 0 ? specific[0] : rhs[0]) || '';
     }
     return result;
+  } catch(e) { return {}; }
+}
+
+
+// Fetcha keyword per lista URI dataset
+async function fetchKeywords(uris) {
+  if (!uris.length) return {};
+  const values = uris.map(u => '<' + u + '>').join(' ');
+  const q =
+    "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+    "SELECT ?d ?kw WHERE {\n" +
+    "  VALUES ?d { " + values + " }\n" +
+    "  ?d dcat:keyword ?kw .\n" +
+    "  FILTER(?kw != 'N_A' && ?kw != 'n_a' && ?kw != 'NA' && STR(?kw) != '')\n" +
+    "}";
+  try {
+    const rows = await sparql(q);
+    const map = {};
+    for (const r of rows) {
+      const d  = val(r,'d');
+      const kw = val(r,'kw').trim();
+      if (kw && kw.toLowerCase() !== 'n_a' && kw !== 'NA') {
+        if (!map[d]) map[d] = [];
+        if (!map[d].includes(kw)) map[d].push(kw);
+      }
+    }
+    return map;
   } catch(e) { return {}; }
 }
 
@@ -1134,7 +1169,7 @@ function fmtLabel(uri) {
 function shortDate(iso) { return iso ? iso.slice(0,10) : ''; }
 
 // ── RENDER RESULTS ────────────────────────────────────────────────────────
-function renderResults(rows, label, append=false, rhMap={}) {
+function renderResults(rows, label, append=false, rhMap={}, kwMap={}) {
   if (!rows.length && !append) {
     addMsg(`<div class="no-results"><div class="icon">🔎</div>Nessun dataset trovato per <strong>"${label}"</strong>.</div>`);
     return;
@@ -1186,6 +1221,7 @@ function renderResults(rows, label, append=false, rhMap={}) {
       '<div class="dataset-meta">' +
       (modified ? '<span class="meta-tag date">📅 ' + modified + '</span>' : '') +
       '</div>' +
+      (kwMap[dUri] && kwMap[dUri].length ? '<div class="dataset-kws">' + kwMap[dUri].slice(0,5).map(k=>'<span class="kw-tag">' + k + '</span>').join('') + '</div>' : '') +
       '</div>';
   });
 
@@ -1425,8 +1461,8 @@ async function searchByKeyword(words, offset=0) {
       return;
     }
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
-    const _rhMap = await fetchRhNames(_uris);
-    renderResults(rows, label, offset > 0, _rhMap);
+    const [_rhMap, _kwMap] = await Promise.all([fetchRhNames(_uris), fetchKeywords(_uris)]);
+    renderResults(rows, label, offset > 0, _rhMap, _kwMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
@@ -1526,8 +1562,8 @@ async function loadRecent(offset=0) {
     lastQuery = { type:'recent', params:{}, offset, label:'ultimi aggiornati' };
     removeTyping();
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
-    const _rhMap = await fetchRhNames(_uris);
-    renderResults(rows, 'ultimi aggiornati', offset > 0, _rhMap);
+    const [_rhMap, _kwMap] = await Promise.all([fetchRhNames(_uris), fetchKeywords(_uris)]);
+    renderResults(rows, 'ultimi aggiornati', offset > 0, _rhMap, _kwMap);
   } catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
 }
 
@@ -1592,8 +1628,8 @@ async function doAdvSearch() {
     const rows = await sparql(buildAdvQuery(q, theme, pub, identifier, format, license, sort, 0));
     removeTyping();
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
-    const _rhMap = await fetchRhNames(_uris);
-    renderResults(rows, label, false, _rhMap);
+    const [_rhMap, _kwMap] = await Promise.all([fetchRhNames(_uris), fetchKeywords(_uris)]);
+    renderResults(rows, label, false, _rhMap, _kwMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
@@ -1947,15 +1983,16 @@ function kwFilterOr(words) {
 function kwFilter(words) {
   return words.map(function(w) {
     var wl = w.toLowerCase().replace(/"/g, "");
-    return '(CONTAINS(LCASE(?title),"' + wl + '")||CONTAINS(LCASE(STR(?description)),"' + wl + '")||CONTAINS(LCASE(STR(?kw)),"' + wl + '"))';
+    return '(CONTAINS(LCASE(?title),"' + wl + '")||' +
+           'CONTAINS(LCASE(STR(?description)),"' + wl + '")||' +
+           'EXISTS { ?d <http://www.w3.org/ns/dcat#keyword> ?kw2 . FILTER(CONTAINS(LCASE(STR(?kw2)),"' + wl + '")) })';
   }).join(" && ");
 }
 
 function buildKeywordQuery(words, offset, useOr=false) {
   return SPARQL_PREFIXES + SPARQL_SELECT +
     "  ?d a dcat:Dataset . ?d dct:title ?title .\n" +
-    "  OPTIONAL { ?d <http://www.w3.org/ns/dcat#keyword> ?kw }\n" +
-    "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
+        "  OPTIONAL { ?d dct:description ?description FILTER(LANG(?description)='it'||LANG(?description)='') }\n" +
     "  OPTIONAL { ?d dct:rightsHolder ?rh . ?rh foaf:name ?rhName }\n" +
     "  OPTIONAL { ?d dct:modified ?modified }\n" +
     "  " + LANG_FILTER + "\n" +
@@ -2023,8 +2060,8 @@ async function loadMoreResults(offset) {
     lastQuery.offset = offset;
     removeTyping();
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
-    const _rhMap = await fetchRhNames(_uris);
-    renderResults(rows, lq.label, true, _rhMap);
+    const [_rhMap, _kwMap] = await Promise.all([fetchRhNames(_uris), fetchKeywords(_uris)]);
+    renderResults(rows, lq.label, true, _rhMap, _kwMap);
   } catch(e) {
     removeTyping();
     addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
