@@ -715,7 +715,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.13</div>
+  <div class="header-badge">v2026.03.25.14</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1365,7 +1365,7 @@ async function doSearch() {
 
   if (!q && !org) return;
 
-  // Imposta stato publisher se è stato specificato un ente
+  // Imposta stato
   if (org) {
     state.publisher = org;
     state.publisherLabel = org;
@@ -1375,29 +1375,18 @@ async function doSearch() {
     state.publisherLabel = null;
     state.publisherType = null;
   }
-
-  if (q) {
-    state.keywords = q;
-  } else {
-    state.keywords = null;
-  }
-
+  state.keywords = q || null;
   updateActiveBar();
 
   const label = [q, org ? '🏛️ ' + org : ''].filter(Boolean).join(' · ');
   addMsg('🔍 <strong>' + label + '</strong>', true);
 
-  if (!state.theme && !state.hvd) {
-    // Solo keyword + eventuale publisher
-    if (q) {
-      const words = q.split(/\s+/).filter(Boolean);
-      await searchByKeyword(words, 0);
-    } else {
-      // Solo publisher, nessuna keyword
-      runCombinedQuery(0);
-    }
-  } else {
+  // Se c'è publisher OPPURE tema/hvd → usa runCombinedQuery (gestisce tutto)
+  if (state.publisher || state.theme || state.hvd) {
     runCombinedQuery(0);
+  } else if (q) {
+    // Solo keyword libera
+    await searchByKeyword(q.split(/\s+/).filter(Boolean), 0);
   }
 }
 
