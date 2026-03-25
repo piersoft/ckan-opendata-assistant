@@ -657,7 +657,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.1</div>
+  <div class="header-badge">v2026.03.25.2</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -761,6 +761,18 @@ header{
             <option value="TRAN">🚗 Trasporti</option>
           </select>
         </div>
+        <div class="adv-field">
+          <label>Categoria HVD</label>
+          <select id="advHvd">
+            <option value="">— Tutte —</option>
+            <option value="c_ac64a52d">🗺️ Geospaziali</option>
+            <option value="c_dd313021">🌍 Terra e Ambiente</option>
+            <option value="c_e1da4e07">📊 Statistici</option>
+            <option value="c_164e0bf5">🌤️ Meteorologici</option>
+            <option value="c_b79e35eb">🚗 Mobilità</option>
+            <option value="c_a9135398">🏢 Imprese</option>
+          </select>
+        </div>
         <div class="adv-field autocomplete-wrap">
           <label>Amministrazione (rightsHolder)</label>
           <input type="text" id="advPub" placeholder="es. Comune di Bari, r_puglia…"
@@ -862,6 +874,7 @@ function updateActiveBar() {
   const pills = document.getElementById('activePills');
   const entries = [];
   if (state.keywords)  entries.push({ key:'keywords',  label:'🔍 ' + state.keywords });
+  if (state.hvd)       entries.push({ key:'hvd', label:'⭐ HVD: ' + (HVD_CATS.find(x=>x.code===state.hvd)||{label:state.hvd}).label });
   if (state.theme)     entries.push({ key:'theme',     label:'🗂️ ' + state.theme.label });
   if (state.publisher) entries.push({ key:'publisher', label:'🗂️ ' + (state.publisherLabel || state.publisher) });
 
@@ -881,6 +894,7 @@ function removeFilter(key) {
   state[key] = null;
   // deseleziona UI
   if (key === 'theme') document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  if (key === 'hvd') document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
   if (key === 'keywords') document.getElementById('searchInput').value = '';
   if (key === 'publisher') {
     state.publisherLabel = null; state.publisherType = null;
@@ -890,8 +904,9 @@ function removeFilter(key) {
 }
 
 function clearAllFilters() {
-  state.keywords = null; state.theme = null; state.publisher = null; state.publisherLabel = null; state.publisherType = null;
+  state.keywords = null; state.theme = null; state.hvd = null; state.publisher = null; state.publisherLabel = null; state.publisherType = null;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   document.getElementById('searchInput').value = '';
@@ -1290,6 +1305,7 @@ function quickSearch(term) {
   state.keywords = term;
   state.theme = null; state.publisher = null;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
   updateActiveBar();
   addMsg(`🔍 <strong>${term}</strong>`, true);
   addTyping();
@@ -1312,6 +1328,7 @@ async function searchByKeyword(q, offset=0) {
 // ── TEMA ──────────────────────────────────────────────────────────────────
 async function searchTheme(code, label) {
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
+  document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
   event?.target?.classList.add('selected');
   if (state.theme?.code === code) {
     state.theme = null;
@@ -1415,7 +1432,7 @@ function toggleAdv() {
 }
 
 function resetAdv() {
-  ['advQ','advTheme','advPub','advFormat','advLicense','advSort'].forEach(id => {
+  ['advQ','advTheme','advHvd','advPub','advFormat','advLicense','advSort'].forEach(id => {
     const el = document.getElementById(id);
     el.value = el.tagName==='SELECT' ? (id==='advSort'?'modified':'') : '';
   });
@@ -1425,6 +1442,7 @@ function resetAdv() {
 async function doAdvSearch() {
   const q       = document.getElementById('advQ').value.trim();
   const theme   = document.getElementById('advTheme').value;
+  const hvd     = document.getElementById('advHvd') ? document.getElementById('advHvd').value : '';
   const pub     = document.getElementById('advPub').value.trim();
   const identifier = document.getElementById('advPub').dataset.identifier || '';
   const format  = document.getElementById('advFormat').value;
@@ -1473,10 +1491,12 @@ async function doAdvSearch() {
   }
 }
 
-function buildAdvQuery(q, theme, pub, identifier, format, license, sort, offset) {
+function buildAdvQuery(q, theme, hvd, pub, identifier, format, license, sort, offset) {
   var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
   if (theme)
     triples += "  ?d dcat:theme <" + THEME_BASE + theme + "> .\n";
+  if (hvd)
+    triples += "  ?d <http://data.europa.eu/r5r/hvdCategory> <" + HVD_BASE + hvd + "> .\n";
   if (format)
     triples += "  ?d dcat:distribution ?distFmt . ?distFmt dct:format <" + FT_BASE + format + "> .\n";
   if (license) {
