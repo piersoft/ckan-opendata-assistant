@@ -814,7 +814,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.31</div>
+  <div class="header-badge">v2026.03.25.32</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1557,12 +1557,11 @@ function quickSearch(term) {
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
   event?.currentTarget?.classList.add('selected');
   state.keywords = term;
-  state.theme = null; state.publisher = null; state.hvd = null;
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
-  document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
+  // Non resetta gli altri filtri attivi (tema, hvd, publisher)
   updateActiveBar();
   addMsg('🔍 <strong>' + term + '</strong>', true);
-  searchByKeyword(term.split(/\s+/), 0);
+  // Usa sempre runCombinedQuery per rispettare tutti i filtri attivi
+  runCombinedQuery(0);
 }
 
 async function searchByKeyword(words, offset=0) {
