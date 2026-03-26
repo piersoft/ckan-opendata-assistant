@@ -814,7 +814,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.30</div>
+  <div class="header-badge">v2026.03.25.31</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -823,7 +823,7 @@ header{
 <div class="active-bar" id="activeBar">
   <span class="active-bar-label">🔎 Filtri attivi:</span>
   <div id="activePills" style="display:flex;flex-wrap:wrap;gap:5px"></div>
-  <button class="clear-all-btn" onclick="location.reload()">✕ Reset</button>
+  <button class="clear-all-btn" onclick="clearAllFilters()">✕ Reset</button>
   <button class="run-query-btn" onclick="runCombinedQuery()">▶ Cerca</button>
 </div>
 
@@ -1069,25 +1069,60 @@ function updateActiveBar() {
 
 function removeFilter(key) {
   state[key] = null;
-  // deseleziona UI
+  // Reset UI elementi specifici
   if (key === 'theme') document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   if (key === 'hvd') document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
-  if (key === 'keywords') document.getElementById('searchInput').value = '';
+  if (key === 'keywords') {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('wizardOrg') && (document.getElementById('wizardOrg').value = '');
+  }
   if (key === 'publisher') {
     state.publisherLabel = null; state.publisherType = null;
     document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
+    const wo = document.getElementById('wizardOrg');
+    if (wo) wo.value = '';
   }
   updateActiveBar();
+
+  // Se rimane almeno un filtro attivo → rilancia query
+  const hasFilters = state.keywords || state.theme || state.publisher || state.hvd;
+  if (hasFilters) {
+    runCombinedQuery(0);
+  } else {
+    // Nessun filtro rimasto → bacheca pulita
+    clearAllFilters();
+  }
 }
 
 function clearAllFilters() {
-  state.keywords = null; state.theme = null; state.hvd = null; state.publisher = null; state.publisherLabel = null; state.publisherType = null;
+  // Reset state
+  state.keywords = null; state.theme = null; state.hvd = null;
+  state.publisher = null; state.publisherLabel = null; state.publisherType = null;
+  // Reset UI
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected','active'));
   document.querySelectorAll('.hvd-chip').forEach(c=>c.classList.remove('active'));
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelectorAll('.org-item').forEach(i=>i.classList.remove('selected'));
   document.getElementById('searchInput').value = '';
+  const wo = document.getElementById('wizardOrg');
+  if (wo) wo.value = '';
+  // Chiudi pannello avanzate se aperto
+  const panel = document.getElementById('advPanel');
+  if (panel && panel.classList.contains('open')) toggleAdv();
   updateActiveBar();
+  // Torna alla bacheca: svuota messaggi e mostra welcome
+  const msgs = document.getElementById('messages');
+  if (msgs) msgs.innerHTML = '';
+  const ws = document.getElementById('welcomeScreen');
+  if (!ws) {
+    // Ricrea welcome screen
+    const div = document.createElement('div');
+    div.id = 'welcomeScreen';
+    div.innerHTML = msgs.dataset.welcome || '';
+    msgs.appendChild(div);
+  }
+  // Più semplice: reload
+  location.reload();
 }
 
 async function runCombinedQuery(offset=0) {
