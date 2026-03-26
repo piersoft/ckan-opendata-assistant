@@ -654,7 +654,7 @@ header{
     border: 2px solid var(--primary);
     border-radius: var(--radius);
     background: var(--surface);
-    overflow: visible;
+    overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,.08);
   }
   .wizard-step {
@@ -690,6 +690,11 @@ header{
   .wizard-actions {
     display: flex; gap: 8px; padding: 10px 14px;
     border-top: 1px solid var(--border);
+    align-items: center;
+  }
+  .wizard-actions .adv-toggle {
+    flex: 0 0 auto;
+    width: auto;
   }
   .wizard-search-btn {
     flex: 1; padding: 9px 16px;
@@ -814,7 +819,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.34</div>
+  <div class="header-badge">v2026.03.25.39</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1244,16 +1249,11 @@ async function fetchKeywords(uris) {
 }
 
 async function sparql(query) {
-  const body = new URLSearchParams();
-  body.set('query', query);
-  body.set('format', 'application/sparql-results+json');
-  const res = await fetch(SPARQL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/sparql-results+json'
-    },
-    body: body.toString()
+  const url = new URL('https://lod.dati.gov.it/sparql');
+  url.searchParams.set('query', query);
+  url.searchParams.set('format', 'application/sparql-results+json');
+  const res = await fetch(url.toString(), {
+    headers: { 'Accept': 'application/sparql-results+json' }
   });
   if (!res.ok) throw new Error(`SPARQL error ${res.status}`);
   const data = await res.json();
@@ -1767,7 +1767,7 @@ async function doAdvSearch() {
   }
 }
 
-function buildAdvQuery(q, theme, hvd, pub, identifier, format, license, sort, offset) {
+function buildAdvQuery(q, theme, hvd, pub, format, license, sort, offset) {
   var triples = "  ?d a dcat:Dataset . ?d dct:title ?title .\n";
   if (theme)
     triples += "  ?d dcat:theme <" + THEME_BASE + theme + "> .\n";
@@ -2180,7 +2180,7 @@ async function loadMoreResults(offset) {
     const lq = lastQuery;
     if (lq.type === 'advanced') {
       const p = lq.params;
-      rows = await sparql(buildAdvQuery(p.q, p.theme, p.pub, p.identifier, p.format, p.license, p.sort, offset));
+      rows = await sparql(buildAdvQuery(p.q, p.theme, p.hvd||'', p.pub, p.format, p.license, p.sort, offset));
     } else if (lq.type === 'recent') {
       rows = await sparql(buildRecentQuery(offset));
     } else if (lq.type === 'keyword') {
