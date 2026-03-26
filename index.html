@@ -814,7 +814,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.33</div>
+  <div class="header-badge">v2026.03.25.34</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1750,13 +1750,13 @@ async function doAdvSearch() {
   // Salva per paginazione
   lastQuery = {
     type: 'advanced',
-    params: { q, theme, pub, identifier, format, license, sort },
+    params: { q, theme, hvd, pub, format, license, sort },
     offset: 0,
     label: label
   };
 
   try {
-    const rows = await sparql(buildAdvQuery(q, theme, pub, identifier, format, license, sort, 0));
+    const rows = await sparql(buildAdvQuery(q, theme, hvd, pub, format, license, sort, 0));
     removeTyping();
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
     const [_rhMap, _kwMap] = await Promise.all([fetchRhNames(_uris), fetchKeywords(_uris)]);
