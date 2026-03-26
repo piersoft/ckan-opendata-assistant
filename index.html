@@ -814,7 +814,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.32</div>
+  <div class="header-badge">v2026.03.25.33</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -2112,11 +2112,12 @@ function kwFilterOr(words) {
 }
 
 function kwFilter(words) {
-  return words.map(function(w) {
+  return words.map(function(w, i) {
     var wl = w.toLowerCase().replace(/"/g, "");
+    var kv = "kw" + i; // variabile unica per ogni parola
     return '(CONTAINS(LCASE(?title),"' + wl + '")||' +
            'CONTAINS(LCASE(STR(?description)),"' + wl + '")||' +
-           'EXISTS { ?d <http://www.w3.org/ns/dcat#keyword> ?kw2 . FILTER(CONTAINS(LCASE(STR(?kw2)),"' + wl + '")) })';
+           'EXISTS { ?d <http://www.w3.org/ns/dcat#keyword> ?' + kv + ' . FILTER(CONTAINS(LCASE(STR(?' + kv + ')),"' + wl + '")) })';
   }).join(" && ");
 }
 
