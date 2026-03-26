@@ -696,6 +696,25 @@ header{
     flex: 0 0 auto;
     width: auto;
   }
+  /* Nascondi wizard steps quando avanzate è aperto */
+  .wizard-step {
+    transition: max-height 0.2s ease, opacity 0.2s ease;
+    max-height: 200px;
+    opacity: 1;
+    overflow: hidden;
+  }
+  .wizard-wrap.adv-open .wizard-step {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  .wizard-wrap.adv-open .wizard-actions {
+    border-top: none;
+  }
+  .wizard-wrap.adv-open .wizard-search-btn {
+    display: none;
+  }
   .wizard-search-btn {
     flex: 1; padding: 9px 16px;
     border-radius: var(--radius);
@@ -819,7 +838,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.39</div>
+  <div class="header-badge">v2026.03.25.41</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1297,6 +1316,16 @@ function shortDate(iso) { return iso ? iso.slice(0,10) : ''; }
 
 // ── RENDER RESULTS ────────────────────────────────────────────────────────
 function renderResults(rows, label, append=false, rhMap={}, kwMap={}) {
+  // Rimostra wizard-steps se avanzate era aperto
+  const wrap = document.querySelector('.wizard-wrap');
+  if (wrap) wrap.classList.remove('adv-open');
+  // Chiudi pannello avanzate
+  const advPanel = document.getElementById('advPanel');
+  const advToggle = document.getElementById('advToggle');
+  if (advPanel && advPanel.classList.contains('open')) {
+    advPanel.classList.remove('open');
+    if (advToggle) { advToggle.classList.remove('open'); advToggle.textContent = '⚙️ Avanzata'; }
+  }
   if (!rows.length && !append) {
     addMsg(`<div class="no-results"><div class="icon">🔎</div>Nessun dataset trovato per <strong>"${label}"</strong>.</div>`);
     return;
@@ -1697,11 +1726,12 @@ async function loadRecent(offset=0) {
 function toggleAdv() {
   const panel = document.getElementById('advPanel');
   const toggle = document.getElementById('advToggle');
+  const wrap = document.querySelector('.wizard-wrap');
   const isOpen = panel.classList.toggle('open');
   toggle.classList.toggle('open', isOpen);
   toggle.textContent = isOpen ? '✕ Chiudi' : '⚙️ Avanzata';
   toggle.setAttribute('aria-expanded', isOpen);
-  // Su mobile: scrolla al pannello quando aperto
+  if (wrap) wrap.classList.toggle('adv-open', isOpen);
   if (isOpen && window.innerWidth <= 768) {
     setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   }
