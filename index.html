@@ -409,7 +409,7 @@ header{
   /* ricerca avanzata: 1 colonna */
   .adv-grid { grid-template-columns: 1fr; }
   .adv-row2 { grid-template-columns: 1fr 1fr; }
-  .adv-panel.open { max-height: 700px; }
+
 
   /* input bar compatta */
   .input-bar { padding: 8px 12px; gap: 6px; }
@@ -728,6 +728,78 @@ header{
     flex: 1;
   }
 
+
+  /* ── FIX MOBILE ───────────────────────────────────────── */
+  @media (max-width: 768px) {
+
+    /* Wizard input font più grande per evitare zoom iOS */
+    .wizard-step input {
+      font-size: 16px !important;
+    }
+
+    /* Pannello avanzate: scrollabile su mobile */
+
+
+    /* Griglia avanzate: 1 colonna su mobile */
+    .adv-grid { grid-template-columns: 1fr !important; }
+    .adv-row2 { grid-template-columns: 1fr !important; }
+
+    /* Pulsanti azione avanzate: full width */
+    .adv-actions { flex-direction: column; }
+    .adv-btn { width: 100%; }
+
+    /* Wizard: testo placeholder più corto */
+    #searchInput::placeholder { font-size: 14px; }
+    #wizardOrg { font-size: 16px !important; }
+
+    /* detail-panel padding ridotto */
+    .detail-body { padding: 10px 12px; }
+    .detail-header { padding: 10px 12px; }
+
+    /* Card dataset: padding ridotto */
+    .dataset-card { padding: 10px 12px; }
+
+    /* Pulsanti risorsa: stack verticale */
+    .resource-item-header { flex-wrap: wrap; }
+
+    /* Action chips: wrap */
+    .action-chips { flex-wrap: wrap; gap: 6px; }
+  }
+
+
+    .wizard-search-btn { width: 100%; }
+    .adv-toggle { width: 100%; justify-content: center; }
+
+    /* pannello avanzate: scroll + altezza max */
+    .adv-panel.open {
+      max-height: 60vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .adv-grid { grid-template-columns: 1fr !important; }
+    .adv-row2 { grid-template-columns: 1fr !important; }
+  }
+
+
+  @media (max-width: 768px) {
+    /* Pannello avanzate: max-height ridotto e scroll */
+    .adv-panel.open {
+      max-height: 55vh !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* Griglia avanzate: 1 colonna */
+    .adv-grid { grid-template-columns: 1fr !important; }
+    .adv-row2 { grid-template-columns: 1fr !important; }
+    /* Wizard actions: colonna su mobile stretto */
+    .wizard-actions { flex-wrap: wrap; }
+    .wizard-search-btn { flex: 1; }
+    .adv-toggle { flex: 0 0 auto !important; width: auto !important; padding: 8px 12px !important; font-size: 12px !important; border-radius: 20px !important; }
+    /* Input wizard: 16px evita zoom iOS */
+    .wizard-step input { font-size: 16px !important; }
+    #wizardOrg { font-size: 16px !important; }
+  }
+
 </style>
 </head>
 <body>
@@ -742,7 +814,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.23</div>
+  <div class="header-badge">v2026.03.25.29</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1594,6 +1666,11 @@ function toggleAdv() {
   const isOpen = panel.classList.toggle('open');
   toggle.classList.toggle('open', isOpen);
   toggle.textContent = isOpen ? '✕ Chiudi' : '⚙️ Avanzata';
+  toggle.setAttribute('aria-expanded', isOpen);
+  // Su mobile: scrolla al pannello quando aperto
+  if (isOpen && window.innerWidth <= 768) {
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  }
 }
 
 function resetAdv() {
