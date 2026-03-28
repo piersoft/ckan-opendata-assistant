@@ -838,7 +838,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.25.41</div>
+  <div class="header-badge">v2026.03.27.1</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1157,7 +1157,7 @@ async function runCombinedQuery(offset=0) {
   if (state.publisher) parts.push('🏛️ ' + (state.publisherLabel || state.publisher));
   const label = parts.join(' · ');
 
-  if (offset === 0) addMsg('🔎 <strong>' + label + '</strong>', true);
+  if (offset === 0) { clearPreviousResults(); addMsg('🔎 <strong>' + label + '</strong>', true); }
   addTyping();
   setBusy(true);
   lastQuery = { type:'combined', params:{ state: JSON.parse(JSON.stringify(state)) }, offset, label };
@@ -1597,6 +1597,7 @@ async function searchByKeyword(words, offset=0) {
   const label = Array.isArray(words) ? words.join(' ') : words;
   const wordsArr = Array.isArray(words) ? words : words.trim().split(/\s+/);
   lastQuery = { type:'keyword', params:{ q: label }, offset, label };
+  if (offset === 0) clearPreviousResults();
   addTyping();
   setBusy(true);
   try {
@@ -2117,6 +2118,16 @@ function selectWizardOrg(el) {
   wizardOrgSelected = { name };
   document.getElementById('wizardOrgList').classList.remove('open');
   document.getElementById('wizardOrgList').innerHTML = '';
+}
+
+
+// Pulisce i messaggi bot precedenti (risultati vecchi) prima di una nuova ricerca
+function clearPreviousResults() {
+  const msgs = document.getElementById('messages');
+  if (!msgs) return;
+  // Rimuovi tutti i messaggi bot (non user) tranne il welcome screen
+  const botMsgs = msgs.querySelectorAll('.msg.bot, .msg.wide');
+  botMsgs.forEach(m => m.remove());
 }
 
 // ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
