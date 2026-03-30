@@ -838,7 +838,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.27.1</div>
+  <div class="header-badge">v2026.03.27.2</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -2121,13 +2121,13 @@ function selectWizardOrg(el) {
 }
 
 
-// Pulisce i messaggi bot precedenti (risultati vecchi) prima di una nuova ricerca
+// Pulisce tutti i messaggi precedenti prima di una nuova ricerca
 function clearPreviousResults() {
   const msgs = document.getElementById('messages');
   if (!msgs) return;
-  // Rimuovi tutti i messaggi bot (non user) tranne il welcome screen
-  const botMsgs = msgs.querySelectorAll('.msg.bot, .msg.wide');
-  botMsgs.forEach(m => m.remove());
+  // Rimuovi tutti i messaggi (bot e user) — pulito per la nuova ricerca
+  const allMsgs = msgs.querySelectorAll('.msg');
+  allMsgs.forEach(m => m.remove());
 }
 
 // ── PAGINAZIONE RISULTATI ────────────────────────────────────────────────
