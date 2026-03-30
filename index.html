@@ -841,6 +841,18 @@ header{
   }
   .dataset-org { display: flex; align-items: center; }
 
+
+  /* Icone Bootstrap Italia */
+  .bi-icon {
+    display: inline-block; width: 1.1em; height: 1.1em;
+    vertical-align: -0.15em; fill: currentColor;
+    flex-shrink: 0;
+  }
+  .bi-icon-sm { width: 0.9em; height: 0.9em; }
+  .bi-icon-lg { width: 1.4em; height: 1.4em; }
+  .quick-btn { display: flex; align-items: center; gap: 7px; }
+  .chip-inner { display: inline-flex; align-items: center; gap: 5px; }
+
 </style>
 </head>
 <body>
@@ -849,13 +861,13 @@ header{
 <header role="banner">
   <div class="header-left">
     <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">≡</button>
-    <div class="logo-icon">🏛️</div>
+    <div class="logo-icon"><svg class="bi-icon bi-icon-lg" style="color:white" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-pa"></use></svg></div>
     <div>
       <div class="header-title">Assistente Open Data · dati.gov.it</div>
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.30.0</div>
+  <div class="header-badge">v2026.03.30.1</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -872,30 +884,30 @@ header{
   <aside class="sidebar" role="complementary" aria-label="Navigazione e filtri" id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Azioni rapide</div>
-      <button class="quick-btn" onclick="quickSearch('rifiuti')">♻️ Rifiuti</button>
+      <button class="quick-btn" onclick="quickSearch('rifiuti')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-recycle"></use></svg> Rifiuti</button>
       <button class="quick-btn" onclick="quickSearch('trasporti')">🚌 Trasporti</button>
       <button class="quick-btn" onclick="quickSearch('ambiente')">🌿 Ambiente</button>
       <button class="quick-btn" onclick="quickSearch('scuole')">🎓 Scuole</button>
       <button class="quick-btn" onclick="quickSearch('salute')">🏥 Salute</button>
-      <button class="quick-btn" onclick="loadRecent()">🕐 Ultimi aggiornati</button>
+      <button class="quick-btn" onclick="loadRecent()"><svg class="bi-icon" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-clock"></use></svg> Ultimi aggiornati</button>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Temi DCAT-AP</div>
       <div class="theme-chips">
-        <span class="chip" onclick="searchTheme('AGRI','Agricoltura')">🌾 Agricoltura</span>
-        <span class="chip" onclick="searchTheme('ECON','Economia')">📈 Economia</span>
-        <span class="chip" onclick="searchTheme('EDUC','Istruzione')">📚 Istruzione</span>
-        <span class="chip" onclick="searchTheme('ENER','Energia')">⚡ Energia</span>
-        <span class="chip" onclick="searchTheme('ENVI','Ambiente')">🌍 Ambiente</span>
-        <span class="chip" onclick="searchTheme('GOVE','Governo')">🏛️ Governo</span>
-        <span class="chip" onclick="searchTheme('HEAL','Salute')">❤️ Salute</span>
-        <span class="chip" onclick="searchTheme('INTR','Relazioni int.')">🌐 Intern.</span>
-        <span class="chip" onclick="searchTheme('JUST','Giustizia')">⚖️ Giustizia</span>
-        <span class="chip" onclick="searchTheme('REGI','Regioni')">🗺️ Regioni</span>
-        <span class="chip" onclick="searchTheme('SOCI','Società')">👥 Società</span>
-        <span class="chip" onclick="searchTheme('TECH','Tecnologia')">💻 Tecnologia</span>
-        <span class="chip" onclick="searchTheme('TRAN','Trasporti')">🚗 Trasporti</span>
+        <span class="chip" onclick="searchTheme('AGRI','Agricoltura')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-leaf"></use></svg> Agricoltura</span>
+        <span class="chip" onclick="searchTheme('ECON','Economia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-chart-line"></use></svg> Economia</span>
+        <span class="chip" onclick="searchTheme('EDUC','Istruzione')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-university"></use></svg> Istruzione</span>
+        <span class="chip" onclick="searchTheme('ENER','Energia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-plug"></use></svg> Energia</span>
+        <span class="chip" onclick="searchTheme('ENVI','Ambiente')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-map-marker"></use></svg> Ambiente</span>
+        <span class="chip" onclick="searchTheme('GOVE','Governo')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-pa"></use></svg> Governo</span>
+        <span class="chip" onclick="searchTheme('HEAL','Salute')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-stethoscope"></use></svg> Salute</span>
+        <span class="chip" onclick="searchTheme('INTR','Relazioni int.')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-globe"></use></svg> Intern.</span>
+        <span class="chip" onclick="searchTheme('JUST','Giustizia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-gavel"></use></svg> Giustizia</span>
+        <span class="chip" onclick="searchTheme('REGI','Regioni')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-map-marker-plus"></use></svg> Regioni</span>
+        <span class="chip" onclick="searchTheme('SOCI','Società')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-people"></use></svg> Società</span>
+        <span class="chip" onclick="searchTheme('TECH','Tecnologia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-settings"></use></svg> Tecnologia</span>
+        <span class="chip" onclick="searchTheme('TRAN','Trasporti')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-car"></use></svg> Trasporti</span>
       </div>
     </div>
 
@@ -919,7 +931,7 @@ header{
   <div class="chat-area" role="region" aria-label="Risultati ricerca">
     <div class="messages" id="messages">
       <div class="welcome" id="welcomeScreen">
-        <div class="welcome-icon"></div>
+        <div class="welcome-icon"><svg style="width:56px;height:56px;fill:var(--primary)" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-search"></use></svg></div>
         <h2>Cosa stai cercando?</h2>
         <p>Esplora 68.000+ dataset via SPARQL su <strong>lod.dati.gov.it</strong>. Ricerca per parola chiave, tema DCAT-AP, publisher o filtri avanzati.</p>
         <div class="welcome-actions">
@@ -927,7 +939,7 @@ header{
           <span class="welcome-chip" onclick="quickSearch('qualità aria')">Qualità aria</span>
           <span class="welcome-chip" onclick="quickSearch('rifiuti')">Rifiuti</span>
           <span class="welcome-chip" onclick="quickSearch('comuni')">Comuni</span>
-          <span class="welcome-chip" onclick="searchTheme('TRAN','Trasporti')">🚗 Trasporti</span>
+          <span class="welcome-chip" onclick="searchTheme('TRAN','Trasporti')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-car"></use></svg> Trasporti</span>
           <span class="welcome-chip" onclick="searchPublisher('Regione Puglia')">Reg. Puglia</span>
         </div>
       </div>
@@ -1054,6 +1066,12 @@ header{
 </div>
 
 <script>
+
+// Icona Bootstrap Italia
+function biIcon(name, cls) {
+  cls = cls || '';
+  return '<svg class="bi-icon ' + cls + '" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#' + name + '"></use></svg>';
+}
 // ── CONFIG ────────────────────────────────────────────────────────────────
 const HVD_BASE = 'http://data.europa.eu/bna/';
 const HVD_CATS = [
