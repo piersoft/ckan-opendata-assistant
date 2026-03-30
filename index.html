@@ -833,6 +833,14 @@ header{
   .icon-svg-20 { width: 20px; height: 20px; }
   .icon-svg-24 { width: 24px; height: 24px; }
 
+
+  .org-prefix {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text3);
+    margin-right: 4px;
+  }
+  .dataset-org { display: flex; align-items: center; }
+
 </style>
 </head>
 <body>
@@ -847,7 +855,7 @@ header{
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.27.3</div>
+  <div class="header-badge">v2026.03.27.4</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1381,10 +1389,10 @@ function renderResults(rows, label, append=false, rhMap={}, kwMap={}) {
       'data-org="' + org.replace(/"/g,'&quot;') + '" ' +
       'onclick="showDatasetFromCard(this)">' +
       '<div class="dataset-title">' + title + '</div>' +
-      (org ? '<div class="dataset-org">' + org + '</div>' : '') +
+      (org ? '<div class="dataset-org"><span class="org-prefix">Ente</span> ' + org + '</div>' : '') +
       (notes ? '<div class="dataset-notes">' + notes.slice(0,200) + '</div>' : '') +
       '<div class="dataset-meta">' +
-      (modified ? '<span class="meta-tag date">' + modified + '</span>' : '') +
+      (modified ? '<span class="meta-tag date">Agg. ' + modified + '</span>' : '') +
       '</div>' +
       (kwMap[dUri] && kwMap[dUri].length ? '<div class="dataset-kws">' + kwMap[dUri].slice(0,5).map(k=>'<span class="kw-tag">' + k + '</span>').join('') + '</div>' : '') +
       '</div>';
@@ -1739,7 +1747,7 @@ function toggleAdv() {
   const wrap = document.querySelector('.wizard-wrap');
   const isOpen = panel.classList.toggle('open');
   toggle.classList.toggle('open', isOpen);
-  toggle.textContent = isOpen ? '✕ Chiudi' : 'Avanzata';
+  toggle.textContent = isOpen ? '✕ Chiudi' : '⚙ Avanzata';
   toggle.setAttribute('aria-expanded', isOpen);
   if (wrap) wrap.classList.toggle('adv-open', isOpen);
   if (isOpen && window.innerWidth <= 768) {
