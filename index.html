@@ -853,6 +853,16 @@ header{
   .quick-btn { display: flex; align-items: center; gap: 7px; }
   .chip-inner { display: inline-flex; align-items: center; gap: 5px; }
 
+
+  /* Icone temi dati.gov.it */
+  .topic-icon {
+    width: 18px; height: 18px;
+    object-fit: contain; vertical-align: middle;
+    flex-shrink: 0; display: inline-block;
+  }
+  .chip { display: inline-flex; align-items: center; gap: 5px; }
+  .quick-btn { display: flex; align-items: center; gap: 7px; }
+
 </style>
 </head>
 <body>
@@ -861,13 +871,13 @@ header{
 <header role="banner">
   <div class="header-left">
     <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">≡</button>
-    <div class="logo-icon"><svg class="bi-icon bi-icon-lg" style="color:white" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-pa"></use></svg></div>
+    <div class="logo-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></div>
     <div>
       <div class="header-title">Assistente Open Data · dati.gov.it</div>
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.30.1</div>
+  <div class="header-badge">v2026.03.30.2</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -884,30 +894,30 @@ header{
   <aside class="sidebar" role="complementary" aria-label="Navigazione e filtri" id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Azioni rapide</div>
-      <button class="quick-btn" onclick="quickSearch('rifiuti')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-recycle"></use></svg> Rifiuti</button>
-      <button class="quick-btn" onclick="quickSearch('trasporti')">🚌 Trasporti</button>
-      <button class="quick-btn" onclick="quickSearch('ambiente')">🌿 Ambiente</button>
-      <button class="quick-btn" onclick="quickSearch('scuole')">🎓 Scuole</button>
-      <button class="quick-btn" onclick="quickSearch('salute')">🏥 Salute</button>
-      <button class="quick-btn" onclick="loadRecent()"><svg class="bi-icon" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-clock"></use></svg> Ultimi aggiornati</button>
+      <button class="quick-btn" onclick="quickSearch('rifiuti')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-envi.png" alt="" aria-hidden="true"> Rifiuti</button>
+      <button class="quick-btn" onclick="quickSearch('trasporti')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-tran.png" alt="" aria-hidden="true"> Trasporti</button>
+      <button class="quick-btn" onclick="quickSearch('ambiente')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-envi.png" alt="" aria-hidden="true"> Ambiente</button>
+      <button class="quick-btn" onclick="quickSearch('scuole')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-educ.png" alt="" aria-hidden="true"> Scuole</button>
+      <button class="quick-btn" onclick="quickSearch('salute')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-heal.png" alt="" aria-hidden="true"> Salute</button>
+      <button class="quick-btn" onclick="loadRecent()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Ultimi aggiornati</button>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Temi DCAT-AP</div>
       <div class="theme-chips">
-        <span class="chip" onclick="searchTheme('AGRI','Agricoltura')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-leaf"></use></svg> Agricoltura</span>
-        <span class="chip" onclick="searchTheme('ECON','Economia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-chart-line"></use></svg> Economia</span>
-        <span class="chip" onclick="searchTheme('EDUC','Istruzione')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-university"></use></svg> Istruzione</span>
-        <span class="chip" onclick="searchTheme('ENER','Energia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-plug"></use></svg> Energia</span>
-        <span class="chip" onclick="searchTheme('ENVI','Ambiente')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-map-marker"></use></svg> Ambiente</span>
-        <span class="chip" onclick="searchTheme('GOVE','Governo')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-pa"></use></svg> Governo</span>
-        <span class="chip" onclick="searchTheme('HEAL','Salute')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-stethoscope"></use></svg> Salute</span>
-        <span class="chip" onclick="searchTheme('INTR','Relazioni int.')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-globe"></use></svg> Intern.</span>
-        <span class="chip" onclick="searchTheme('JUST','Giustizia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-gavel"></use></svg> Giustizia</span>
-        <span class="chip" onclick="searchTheme('REGI','Regioni')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-map-marker-plus"></use></svg> Regioni</span>
-        <span class="chip" onclick="searchTheme('SOCI','Società')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-people"></use></svg> Società</span>
-        <span class="chip" onclick="searchTheme('TECH','Tecnologia')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-settings"></use></svg> Tecnologia</span>
-        <span class="chip" onclick="searchTheme('TRAN','Trasporti')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-car"></use></svg> Trasporti</span>
+        <span class="chip" onclick="searchTheme('AGRI','Agricoltura')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-agri_1.png" alt="" aria-hidden="true"> Agricoltura</span>
+        <span class="chip" onclick="searchTheme('ECON','Economia')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-econ.png" alt="" aria-hidden="true"> Economia</span>
+        <span class="chip" onclick="searchTheme('EDUC','Istruzione')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-educ.png" alt="" aria-hidden="true"> Istruzione</span>
+        <span class="chip" onclick="searchTheme('ENER','Energia')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-ener.png" alt="" aria-hidden="true"> Energia</span>
+        <span class="chip" onclick="searchTheme('ENVI','Ambiente')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-envi.png" alt="" aria-hidden="true"> Ambiente</span>
+        <span class="chip" onclick="searchTheme('GOVE','Governo')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-gove.png" alt="" aria-hidden="true"> Governo</span>
+        <span class="chip" onclick="searchTheme('HEAL','Salute')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-heal.png" alt="" aria-hidden="true"> Salute</span>
+        <span class="chip" onclick="searchTheme('INTR','Relazioni int.')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-intr.png" alt="" aria-hidden="true"> Intern.</span>
+        <span class="chip" onclick="searchTheme('JUST','Giustizia')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-just.png" alt="" aria-hidden="true"> Giustizia</span>
+        <span class="chip" onclick="searchTheme('REGI','Regioni')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-regi.png" alt="" aria-hidden="true"> Regioni</span>
+        <span class="chip" onclick="searchTheme('SOCI','Società')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-soci.png" alt="" aria-hidden="true"> Società</span>
+        <span class="chip" onclick="searchTheme('TECH','Tecnologia')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-tech.png" alt="" aria-hidden="true"> Tecnologia</span>
+        <span class="chip" onclick="searchTheme('TRAN','Trasporti')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-tran.png" alt="" aria-hidden="true"> Trasporti</span>
       </div>
     </div>
 
@@ -931,7 +941,7 @@ header{
   <div class="chat-area" role="region" aria-label="Risultati ricerca">
     <div class="messages" id="messages">
       <div class="welcome" id="welcomeScreen">
-        <div class="welcome-icon"><svg style="width:56px;height:56px;fill:var(--primary)" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-search"></use></svg></div>
+        <div class="welcome-icon"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <h2>Cosa stai cercando?</h2>
         <p>Esplora 68.000+ dataset via SPARQL su <strong>lod.dati.gov.it</strong>. Ricerca per parola chiave, tema DCAT-AP, publisher o filtri avanzati.</p>
         <div class="welcome-actions">
@@ -939,7 +949,7 @@ header{
           <span class="welcome-chip" onclick="quickSearch('qualità aria')">Qualità aria</span>
           <span class="welcome-chip" onclick="quickSearch('rifiuti')">Rifiuti</span>
           <span class="welcome-chip" onclick="quickSearch('comuni')">Comuni</span>
-          <span class="welcome-chip" onclick="searchTheme('TRAN','Trasporti')"><svg class="bi-icon bi-icon-sm" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#it-car"></use></svg> Trasporti</span>
+          <span class="welcome-chip" onclick="searchTheme('TRAN','Trasporti')"><img class="topic-icon" src="https://www.dati.gov.it/sites/default/files/2019-08/topic-tran.png" alt="" aria-hidden="true"> Trasporti</span>
           <span class="welcome-chip" onclick="searchPublisher('Regione Puglia')">Reg. Puglia</span>
         </div>
       </div>
@@ -1066,65 +1076,6 @@ header{
 </div>
 
 <script>
-
-// Icona Bootstrap Italia
-function biIcon(name, cls) {
-  cls = cls || '';
-  return '<svg class="bi-icon ' + cls + '" aria-hidden="true"><use href="https://cdn.jsdelivr.net/npm/bootstrap-italia@2.8.4/dist/svg/sprites.svg#' + name + '"></use></svg>';
-}
-// ── CONFIG ────────────────────────────────────────────────────────────────
-const HVD_BASE = 'http://data.europa.eu/bna/';
-const HVD_CATS = [
-  { code: 'c_ac64a52d', label: 'Geospaziali' },
-  { code: 'c_dd313021', label: 'Terra e Ambiente' },
-  { code: 'c_e1da4e07', label: 'Statistici' },
-  { code: 'c_164e0bf5', label: 'Meteorologici' },
-  { code: 'c_b79e35eb', label: 'Mobilità' },
-  { code: 'c_a9135398', label: 'Imprese' },
-];
-const SPARQL  = 'https://lod.dati.gov.it/sparql';
-const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/';
-const FT_BASE    = 'http://publications.europa.eu/resource/authority/file-type/';
-const LICENSE_BASE = 'http://publications.europa.eu/resource/authority/licence/';
-const PAGE_SIZE = 8;
-const FETCH_SIZE = PAGE_SIZE * 4; // fetch più righe per compensare duplicati SPARQL
-const ORG_PAGE  = 15;  // organizzazioni per pagina
-
-// stato paginazione risultati
-let lastQuery = null; // { type, params, offset, label }
-
-
-
-// ── STATO FILTRI MULTIPLI ─────────────────────────────────────────────────
-const state = {
-  keywords: null,      // stringa libera
-  theme: null,         // { code, label }
-  publisher: null,     // URI catalogo o nome stringa
-  publisherLabel: null,// titolo leggibile
-  publisherType: null,  // 'uri' | 'name'
-  hvd: null             // HVD category code
-};
-
-function updateActiveBar() {
-  const bar   = document.getElementById('activeBar');
-  const pills = document.getElementById('activePills');
-  const entries = [];
-  if (state.keywords)  entries.push({ key:'keywords',  label:' ' + state.keywords });
-  if (state.hvd)       entries.push({ key:'hvd', label:'HVD: ' + (HVD_CATS.find(x=>x.code===state.hvd)||{label:state.hvd}).label });
-  if (state.theme)     entries.push({ key:'theme',     label:'' + state.theme.label });
-  if (state.publisher) entries.push({ key:'publisher', label:'' + (state.publisherLabel || state.publisher) });
-
-  if (!entries.length) {
-    bar.classList.remove('visible');
-    return;
-  }
-  bar.classList.add('visible');
-  pills.innerHTML = entries.map(e =>
-    `<span class="active-pill">${e.label}
-       <button onclick="removeFilter('${e.key}')">×</button>
-     </span>`
-  ).join('');
-}
 
 function removeFilter(key) {
   state[key] = null;
