@@ -824,6 +824,15 @@ header{
     #wizardOrg { font-size: 16px !important; }
   }
 
+
+  /* ── ICONE SVG ISTITUZIONALI ─────────────────────────────────────── */
+  .icon-svg {
+    display: inline-block; vertical-align: middle;
+    width: 16px; height: 16px; flex-shrink: 0;
+  }
+  .icon-svg-20 { width: 20px; height: 20px; }
+  .icon-svg-24 { width: 24px; height: 24px; }
+
 </style>
 </head>
 <body>
@@ -831,23 +840,23 @@ header{
 <a href="#main-content" class="skip-link">Salta al contenuto principale</a>
 <header role="banner">
   <div class="header-left">
-    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
-    <div class="logo-icon">🏛️</div>
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">≡</button>
+    <div class="logo-icon"></div>
     <div>
       <div class="header-title">Assistente Open Data · dati.gov.it</div>
       <div class="header-subtitle">SPARQL · lod.dati.gov.it · DCAT-AP_IT</div>
     </div>
   </div>
-  <div class="header-badge">v2026.03.27.2</div>
+  <div class="header-badge">v2026.03.27.3</div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
 
 <!-- BARRA FILTRI ATTIVI -->
 <div class="active-bar" id="activeBar">
-  <span class="active-bar-label">🔎 Filtri attivi:</span>
+  <span class="active-bar-label">Filtri attivi:</span>
   <div id="activePills" style="display:flex;flex-wrap:wrap;gap:5px"></div>
-  <button class="clear-all-btn" onclick="clearAllFilters()">✕ Reset</button>
+  <button class="clear-all-btn" onclick="clearAllFilters()">Reset</button>
   <button class="run-query-btn" onclick="runCombinedQuery()">▶ Cerca</button>
 </div>
 
@@ -855,30 +864,30 @@ header{
   <aside class="sidebar" role="complementary" aria-label="Navigazione e filtri" id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Azioni rapide</div>
-      <button class="quick-btn" onclick="quickSearch('rifiuti')">♻️ Rifiuti</button>
-      <button class="quick-btn" onclick="quickSearch('trasporti')">🚌 Trasporti</button>
-      <button class="quick-btn" onclick="quickSearch('ambiente')">🌿 Ambiente</button>
-      <button class="quick-btn" onclick="quickSearch('scuole')">🎓 Scuole</button>
-      <button class="quick-btn" onclick="quickSearch('salute')">🏥 Salute</button>
-      <button class="quick-btn" onclick="loadRecent()">🕐 Ultimi aggiornati</button>
+      <button class="quick-btn" onclick="quickSearch('rifiuti')">Rifiuti</button>
+      <button class="quick-btn" onclick="quickSearch('trasporti')">Trasporti</button>
+      <button class="quick-btn" onclick="quickSearch('ambiente')">Ambiente</button>
+      <button class="quick-btn" onclick="quickSearch('scuole')">Scuole</button>
+      <button class="quick-btn" onclick="quickSearch('salute')">Salute</button>
+      <button class="quick-btn" onclick="loadRecent()">Ultimi aggiornati</button>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Temi DCAT-AP</div>
       <div class="theme-chips">
-        <span class="chip" onclick="searchTheme('AGRI','Agricoltura')">🌾 Agricoltura</span>
-        <span class="chip" onclick="searchTheme('ECON','Economia')">📈 Economia</span>
-        <span class="chip" onclick="searchTheme('EDUC','Istruzione')">📚 Istruzione</span>
-        <span class="chip" onclick="searchTheme('ENER','Energia')">⚡ Energia</span>
-        <span class="chip" onclick="searchTheme('ENVI','Ambiente')">🌍 Ambiente</span>
-        <span class="chip" onclick="searchTheme('GOVE','Governo')">🏛️ Governo</span>
-        <span class="chip" onclick="searchTheme('HEAL','Salute')">❤️ Salute</span>
-        <span class="chip" onclick="searchTheme('INTR','Relazioni int.')">🌐 Intern.</span>
-        <span class="chip" onclick="searchTheme('JUST','Giustizia')">⚖️ Giustizia</span>
-        <span class="chip" onclick="searchTheme('REGI','Regioni')">🗺️ Regioni</span>
-        <span class="chip" onclick="searchTheme('SOCI','Società')">👥 Società</span>
-        <span class="chip" onclick="searchTheme('TECH','Tecnologia')">💻 Tecnologia</span>
-        <span class="chip" onclick="searchTheme('TRAN','Trasporti')">🚗 Trasporti</span>
+        <span class="chip" onclick="searchTheme('AGRI','Agricoltura')">Agricoltura</span>
+        <span class="chip" onclick="searchTheme('ECON','Economia')">Economia</span>
+        <span class="chip" onclick="searchTheme('EDUC','Istruzione')">Istruzione</span>
+        <span class="chip" onclick="searchTheme('ENER','Energia')">Energia</span>
+        <span class="chip" onclick="searchTheme('ENVI','Ambiente')">Ambiente</span>
+        <span class="chip" onclick="searchTheme('GOVE','Governo')">Governo</span>
+        <span class="chip" onclick="searchTheme('HEAL','Salute')">Salute</span>
+        <span class="chip" onclick="searchTheme('INTR','Relazioni int.')">Intern.</span>
+        <span class="chip" onclick="searchTheme('JUST','Giustizia')">Giustizia</span>
+        <span class="chip" onclick="searchTheme('REGI','Regioni')">Regioni</span>
+        <span class="chip" onclick="searchTheme('SOCI','Società')">Società</span>
+        <span class="chip" onclick="searchTheme('TECH','Tecnologia')">Tecnologia</span>
+        <span class="chip" onclick="searchTheme('TRAN','Trasporti')">Trasporti</span>
       </div>
     </div>
 
@@ -890,7 +899,7 @@ header{
     <div class="sidebar-section">
       <div class="sidebar-label">Amministrazioni</div>
           <div class="sidebar-search">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon"></span>
             <input type="text" id="orgSearch" placeholder="Cerca amministrazione…"
                    oninput="filterOrgs(this.value)" autocomplete="off" />
             <div class="ac-dropdown" id="orgAcList"></div>
@@ -902,16 +911,16 @@ header{
   <div class="chat-area" role="region" aria-label="Risultati ricerca">
     <div class="messages" id="messages">
       <div class="welcome" id="welcomeScreen">
-        <div class="welcome-icon">🔍</div>
+        <div class="welcome-icon"></div>
         <h2>Cosa stai cercando?</h2>
         <p>Esplora 68.000+ dataset via SPARQL su <strong>lod.dati.gov.it</strong>. Ricerca per parola chiave, tema DCAT-AP, publisher o filtri avanzati.</p>
         <div class="welcome-actions">
-          <span class="welcome-chip" onclick="quickSearch('defibrillatori')">🏥 Defibrillatori</span>
-          <span class="welcome-chip" onclick="quickSearch('qualità aria')">🌫️ Qualità aria</span>
-          <span class="welcome-chip" onclick="quickSearch('rifiuti')">♻️ Rifiuti</span>
-          <span class="welcome-chip" onclick="quickSearch('comuni')">🏘️ Comuni</span>
-          <span class="welcome-chip" onclick="searchTheme('TRAN','Trasporti')">🚗 Trasporti</span>
-          <span class="welcome-chip" onclick="searchPublisher('Regione Puglia')">🌊 Reg. Puglia</span>
+          <span class="welcome-chip" onclick="quickSearch('defibrillatori')">Defibrillatori</span>
+          <span class="welcome-chip" onclick="quickSearch('qualità aria')">Qualità aria</span>
+          <span class="welcome-chip" onclick="quickSearch('rifiuti')">Rifiuti</span>
+          <span class="welcome-chip" onclick="quickSearch('comuni')">Comuni</span>
+          <span class="welcome-chip" onclick="searchTheme('TRAN','Trasporti')">Trasporti</span>
+          <span class="welcome-chip" onclick="searchPublisher('Regione Puglia')">Reg. Puglia</span>
         </div>
       </div>
     </div>
@@ -927,31 +936,31 @@ header{
           <label>Tema DCAT-AP</label>
           <select id="advTheme">
             <option value="">— tutti —</option>
-            <option value="AGRI">🌾 Agricoltura</option>
-            <option value="ECON">📈 Economia</option>
-            <option value="EDUC">📚 Istruzione</option>
-            <option value="ENER">⚡ Energia</option>
-            <option value="ENVI">🌍 Ambiente</option>
-            <option value="GOVE">🏛️ Governo</option>
-            <option value="HEAL">❤️ Salute</option>
-            <option value="INTR">🌐 Relazioni int.</option>
-            <option value="JUST">⚖️ Giustizia</option>
-            <option value="REGI">🗺️ Regioni</option>
-            <option value="SOCI">👥 Società</option>
-            <option value="TECH">💻 Tecnologia</option>
-            <option value="TRAN">🚗 Trasporti</option>
+            <option value="AGRI">Agricoltura</option>
+            <option value="ECON">Economia</option>
+            <option value="EDUC">Istruzione</option>
+            <option value="ENER">Energia</option>
+            <option value="ENVI">Ambiente</option>
+            <option value="GOVE">Governo</option>
+            <option value="HEAL">Salute</option>
+            <option value="INTR">Relazioni int.</option>
+            <option value="JUST">Giustizia</option>
+            <option value="REGI">Regioni</option>
+            <option value="SOCI">Società</option>
+            <option value="TECH">Tecnologia</option>
+            <option value="TRAN">Trasporti</option>
           </select>
         </div>
         <div class="adv-field">
           <label>Categoria HVD</label>
           <select id="advHvd">
             <option value="">— Tutte —</option>
-            <option value="c_ac64a52d">🗺️ Geospaziali</option>
-            <option value="c_dd313021">🌍 Terra e Ambiente</option>
-            <option value="c_e1da4e07">📊 Statistici</option>
-            <option value="c_164e0bf5">🌤️ Meteorologici</option>
-            <option value="c_b79e35eb">🚗 Mobilità</option>
-            <option value="c_a9135398">🏢 Imprese</option>
+            <option value="c_ac64a52d">Geospaziali</option>
+            <option value="c_dd313021">Terra e Ambiente</option>
+            <option value="c_e1da4e07">Statistici</option>
+            <option value="c_164e0bf5">Meteorologici</option>
+            <option value="c_b79e35eb">Mobilità</option>
+            <option value="c_a9135398">Imprese</option>
           </select>
         </div>
         <div class="adv-field autocomplete-wrap">
@@ -999,8 +1008,8 @@ header{
         </div>
       </div>
       <div class="adv-actions">
-        <button class="adv-btn primary" onclick="doAdvSearch()">🔍 Cerca</button>
-        <button class="adv-btn secondary" onclick="resetAdv()">✕ Reset</button>
+        <button class="adv-btn primary" onclick="doAdvSearch()">Cerca</button>
+        <button class="adv-btn secondary" onclick="resetAdv()">Reset</button>
         <div id="advActiveFilters" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
     </div>
@@ -1028,8 +1037,8 @@ header{
           <div class="ac-dropdown" id="wizardOrgList"></div>
         </div>
         <div class="wizard-actions">
-          <button class="wizard-search-btn" onclick="doSearch()" aria-label="Avvia ricerca">🔍 Cerca</button>
-          <button class="adv-toggle" id="advToggle" onclick="toggleAdv()" aria-expanded="false" aria-controls="advPanel">⚙️ Avanzata</button>
+          <button class="wizard-search-btn" onclick="doSearch()" aria-label="Avvia ricerca">Cerca</button>
+          <button class="adv-toggle" id="advToggle" onclick="toggleAdv()" aria-expanded="false" aria-controls="advPanel">Avanzata</button>
         </div>
       </div>
     </div>
@@ -1040,12 +1049,12 @@ header{
 // ── CONFIG ────────────────────────────────────────────────────────────────
 const HVD_BASE = 'http://data.europa.eu/bna/';
 const HVD_CATS = [
-  { code: 'c_ac64a52d', label: '🗺️ Geospaziali' },
-  { code: 'c_dd313021', label: '🌍 Terra e Ambiente' },
-  { code: 'c_e1da4e07', label: '📊 Statistici' },
-  { code: 'c_164e0bf5', label: '🌤️ Meteorologici' },
-  { code: 'c_b79e35eb', label: '🚗 Mobilità' },
-  { code: 'c_a9135398', label: '🏢 Imprese' },
+  { code: 'c_ac64a52d', label: 'Geospaziali' },
+  { code: 'c_dd313021', label: 'Terra e Ambiente' },
+  { code: 'c_e1da4e07', label: 'Statistici' },
+  { code: 'c_164e0bf5', label: 'Meteorologici' },
+  { code: 'c_b79e35eb', label: 'Mobilità' },
+  { code: 'c_a9135398', label: 'Imprese' },
 ];
 const SPARQL  = 'https://lod.dati.gov.it/sparql';
 const THEME_BASE = 'http://publications.europa.eu/resource/authority/data-theme/';
@@ -1074,10 +1083,10 @@ function updateActiveBar() {
   const bar   = document.getElementById('activeBar');
   const pills = document.getElementById('activePills');
   const entries = [];
-  if (state.keywords)  entries.push({ key:'keywords',  label:'🔍 ' + state.keywords });
-  if (state.hvd)       entries.push({ key:'hvd', label:'⭐ HVD: ' + (HVD_CATS.find(x=>x.code===state.hvd)||{label:state.hvd}).label });
-  if (state.theme)     entries.push({ key:'theme',     label:'🗂️ ' + state.theme.label });
-  if (state.publisher) entries.push({ key:'publisher', label:'🗂️ ' + (state.publisherLabel || state.publisher) });
+  if (state.keywords)  entries.push({ key:'keywords',  label:' ' + state.keywords });
+  if (state.hvd)       entries.push({ key:'hvd', label:'HVD: ' + (HVD_CATS.find(x=>x.code===state.hvd)||{label:state.hvd}).label });
+  if (state.theme)     entries.push({ key:'theme',     label:'' + state.theme.label });
+  if (state.publisher) entries.push({ key:'publisher', label:'' + (state.publisherLabel || state.publisher) });
 
   if (!entries.length) {
     bar.classList.remove('visible');
@@ -1154,10 +1163,10 @@ async function runCombinedQuery(offset=0) {
   if (state.keywords)  parts.push('"' + state.keywords + '"');
   if (state.theme)     parts.push('tema:' + state.theme.label);
   if (state.hvd) { const h = HVD_CATS.find(x=>x.code===state.hvd); if(h) parts.push('HVD:' + h.label); }
-  if (state.publisher) parts.push('🏛️ ' + (state.publisherLabel || state.publisher));
+  if (state.publisher) parts.push('' + (state.publisherLabel || state.publisher));
   const label = parts.join(' · ');
 
-  if (offset === 0) { clearPreviousResults(); addMsg('🔎 <strong>' + label + '</strong>', true); }
+  if (offset === 0) { clearPreviousResults(); addMsg('<strong>' + label + '</strong>', true); }
   addTyping();
   setBusy(true);
   lastQuery = { type:'combined', params:{ state: JSON.parse(JSON.stringify(state)) }, offset, label };
@@ -1198,7 +1207,7 @@ async function runCombinedQuery(offset=0) {
     renderResults(rows, label, offset > 0, rhMap, kwMap);
   } catch(e) {
     removeTyping();
-    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
+    addMsg('<div class="error-msg">' + e.message + '</div>');
   }
   setBusy(false);
 }
@@ -1288,7 +1297,7 @@ function addMsg(html, isUser = false) {
   const div = document.createElement('div');
   const isWide = !isUser && (html.includes('detail-panel') || html.includes('results-container') || html.includes('no-results'));
   div.className = 'msg ' + (isUser ? 'user' : 'bot') + (isWide ? ' wide' : '');
-  div.innerHTML = `<div class="msg-avatar">${isUser ? '👤' : '🏛️'}</div><div class="msg-bubble">${html}</div>`;
+  div.innerHTML = `<div class="msg-bubble">${html}</div>`;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
 }
@@ -1297,7 +1306,7 @@ function addTyping() {
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = 'msg bot'; div.id = 'typingIndicator';
-  div.innerHTML = `<div class="msg-avatar">🏛️</div><div class="typing"><span></span><span></span><span></span></div>`;
+  div.innerHTML = `<div class="msg-avatar"></div><div class="typing"><span></span><span></span><span></span></div>`;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
 }
@@ -1324,14 +1333,14 @@ function renderResults(rows, label, append=false, rhMap={}, kwMap={}) {
   const advToggle = document.getElementById('advToggle');
   if (advPanel && advPanel.classList.contains('open')) {
     advPanel.classList.remove('open');
-    if (advToggle) { advToggle.classList.remove('open'); advToggle.textContent = '⚙️ Avanzata'; }
+    if (advToggle) { advToggle.classList.remove('open'); advToggle.textContent = 'Avanzata'; }
   }
   if (!rows.length && !append) {
-    addMsg(`<div class="no-results"><div class="icon">🔎</div>Nessun dataset trovato per <strong>"${label}"</strong>.</div>`);
+    addMsg(`<div class="no-results"><div class="icon"></div>Nessun dataset trovato per <strong>"${label}"</strong>.</div>`);
     return;
   }
   if (!rows.length && append) {
-    addMsg(`<div class="no-results">✅ Nessun altro risultato disponibile.</div>`);
+    addMsg(`<div class="no-results">Nessun altro risultato disponibile.</div>`);
     return;
   }
 
@@ -1372,10 +1381,10 @@ function renderResults(rows, label, append=false, rhMap={}, kwMap={}) {
       'data-org="' + org.replace(/"/g,'&quot;') + '" ' +
       'onclick="showDatasetFromCard(this)">' +
       '<div class="dataset-title">' + title + '</div>' +
-      (org ? '<div class="dataset-org">📌 ' + org + '</div>' : '') +
+      (org ? '<div class="dataset-org">' + org + '</div>' : '') +
       (notes ? '<div class="dataset-notes">' + notes.slice(0,200) + '</div>' : '') +
       '<div class="dataset-meta">' +
-      (modified ? '<span class="meta-tag date">📅 ' + modified + '</span>' : '') +
+      (modified ? '<span class="meta-tag date">' + modified + '</span>' : '') +
       '</div>' +
       (kwMap[dUri] && kwMap[dUri].length ? '<div class="dataset-kws">' + kwMap[dUri].slice(0,5).map(k=>'<span class="kw-tag">' + k + '</span>').join('') + '</div>' : '') +
       '</div>';
@@ -1384,13 +1393,13 @@ function renderResults(rows, label, append=false, rhMap={}, kwMap={}) {
   if (hasMore) {
     const nextOffset = currentOffset + FETCH_SIZE;
     html += `<button class="load-more-btn" onclick="loadMoreResults(${nextOffset})">
-      ↓ Carica altri risultati
+      Carica altri risultati
     </button>`;
   }
 
   if (!append) {
     html += `<div class="action-chips">
-      <span class="action-chip" onclick="addMsg('💡 Clicca su un dataset per vedere descrizione completa e risorse.')">💡 Come funziona?</span>
+      <span class="action-chip" onclick="addMsg('Clicca su un dataset per vedere descrizione completa e risorse.')">Come funziona?</span>
     </div>`;
   }
 
@@ -1408,7 +1417,7 @@ function showDatasetFromCard(el) {
 }
 
 async function showDataset(dUri, title, org) {
-  addMsg('📂 <strong>' + title + '</strong>', true);
+  addMsg('<strong>' + title + '</strong>', true);
   addTyping();
   try {
     const rows = await sparql(
@@ -1499,8 +1508,8 @@ async function showDataset(dUri, title, org) {
             'data-fmt="' + fmt + '" ' +
             'data-pid="' + pid + '" ' +
             'onclick="previewFromBtn(this)" ' +
-            'style="border-color:var(--success);color:var(--success)">👁 Anteprima</button>' : '') +
-            '<button class="res-btn open" onclick="window.open(\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'_blank\')">↗ Apri</button>' +
+            'style="border-color:var(--success);color:var(--success)">Anteprima</button>' : '') +
+            '<button class="res-btn open" onclick="window.open(\'' + (d.downloadURL||d.url).replace(/'/g,"\'") + '\',\'_blank\')">Apri ↗</button>' +
             '</div>' +
             '</div>' +
             (canPreview ? '<div id="' + pid + '" style="width:100%;margin-top:8px"></div>' : '') +
@@ -1512,13 +1521,13 @@ async function showDataset(dUri, title, org) {
     var dsHtml = '';
     if (dataServices.length > 0) {
       dsHtml = '<div class="api-section">' +
-        '<div class="api-section-label">🔌 API / Data Service</div>' +
+        '<div class="api-section-label">API / Data Service</div>' +
         dataServices.map(function(ds) {
           const docUrl = ds.endpointDesc || ds.endpointURL;
           return '<div style="margin-bottom:6px">' +
             '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">' + ds.title + '</div>' +
-            '<a href="' + docUrl + '" target="_blank" class="api-btn">📄 Documentazione API ↗</a>' +
-            (ds.endpointURL !== docUrl ? ' <a href="' + ds.endpointURL + '" target="_blank" class="api-btn" style="background:#2E7D32">⚡ Endpoint ↗</a>' : '') +
+            '<a href="' + docUrl + '" target="_blank" class="api-btn">Documentazione API ↗</a>' +
+            (ds.endpointURL !== docUrl ? ' <a href="' + ds.endpointURL + '" target="_blank" class="api-btn" style="background:#2E7D32">Endpoint ↗</a>' : '') +
             '</div>';
         }).join('') +
         '</div>';
@@ -1527,7 +1536,7 @@ async function showDataset(dUri, title, org) {
     var html = '<div class="detail-panel">' +
       '<div class="detail-header">' +
         '<h3>' + title + '</h3>' +
-        '<div class="detail-org">📌 ' + org + (modified ? ' · 📅 ' + modified : '') + '</div>' +
+        '<div class="detail-org">' + org + (modified ? ' · ' + modified : '') + '</div>' +
       '</div>' +
       '<div class="detail-body">' +
         (desc ? '<div class="detail-desc">' + desc.slice(0,500) + (desc.length>500?'…':'') + '</div>' : '') +
@@ -1538,14 +1547,14 @@ async function showDataset(dUri, title, org) {
       '</div>' +
     '</div>' +
     '<div class="action-chips">' +
-      '<span class="action-chip" onclick="window.open(\'' + dUri + '\',\'_blank\')">🔗 URI dataset</span>' +
-      '<span class="action-chip" onclick="navigator.clipboard.writeText(\'' + dUri + '\').then(function(){ addMsg(\'✅ URI copiato!\'); })">📋 Copia URI</span>' +
-      (org ? '<span class="action-chip" onclick="searchByName(\'' + org.replace(/'/g,"\'") + '\')">🏢 Altri di ' + org.split(' ').slice(0,3).join(' ') + '</span>' : '') +
+      '<span class="action-chip" onclick="window.open(\'' + dUri + '\',\'_blank\')">URI dataset</span>' +
+      '<span class="action-chip" onclick="navigator.clipboard.writeText(\'' + dUri + '\').then(function(){ addMsg(\'URI copiato!\'); })">Copia URI</span>' +
+      (org ? '<span class="action-chip" onclick="searchByName(\'' + org.replace(/'/g,"\'") + '\')">Altri di ' + org.split(' ').slice(0,3).join(' ') + '</span>' : '') +
     '</div>';
     addMsg(html);
   } catch(e) {
     removeTyping();
-    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
+    addMsg('<div class="error-msg">' + e.message + '</div>');
   }
 }
 
@@ -1570,8 +1579,8 @@ async function doSearch() {
   state.keywords = q || null;
   updateActiveBar();
 
-  const label = [q, org ? '🏛️ ' + org : ''].filter(Boolean).join(' · ');
-  addMsg('🔍 <strong>' + label + '</strong>', true);
+  const label = [q, org ? '' + org : ''].filter(Boolean).join(' · ');
+  addMsg('<strong>' + label + '</strong>', true);
 
   // Se c'è publisher OPPURE tema/hvd → usa runCombinedQuery (gestisce tutto)
   if (state.publisher || state.theme || state.hvd) {
@@ -1588,7 +1597,7 @@ function quickSearch(term) {
   state.keywords = term;
   // Non resetta gli altri filtri attivi (tema, hvd, publisher)
   updateActiveBar();
-  addMsg('🔍 <strong>' + term + '</strong>', true);
+  addMsg('<strong>' + term + '</strong>', true);
   // Usa sempre runCombinedQuery per rispettare tutti i filtri attivi
   runCombinedQuery(0);
 }
@@ -1606,9 +1615,9 @@ async function searchByKeyword(words, offset=0) {
     if (!rows.length && offset === 0) {
       addMsg(
         '<div class="no-results">' +
-        '<div class="icon">🔎</div>' +
+        '' +
         'Nessun dataset trovato per <strong>"' + label + '"</strong>.<br><br>' +
-        '<span style="font-size:13px;color:var(--text2)">💡 Suggerimento: prova con parole più semplici nel titolo ' +
+        '<span style="font-size:13px;color:var(--text2)">Suggerimento: prova con parole più semplici nel titolo ' +
         '(es. <em>"sinistri stradali"</em>), poi affina con i filtri ' +
         '<strong>Amministrazione</strong> o <strong>Tema</strong> nella sidebar.</span>' +
         '</div>'
@@ -1621,7 +1630,7 @@ async function searchByKeyword(words, offset=0) {
     renderResults(rows, label, offset > 0, _rhMap, _kwMap);
   } catch(e) {
     removeTyping();
-    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
+    addMsg('<div class="error-msg">' + e.message + '</div>');
   }
   setBusy(false);
 }
@@ -1689,7 +1698,7 @@ async function searchByIdentifier(identifier, name) {
 
 async function searchCatalog(catalogUri, catalogTitle) {
   if (catalogUri.includes('#')) {
-    addMsg('<div class="error-msg">⚠️ URI catalogo non supportato: ' + catalogTitle + '</div>');
+    addMsg('<div class="error-msg">URI catalogo non supportato: ' + catalogTitle + '</div>');
     return;
   }
   if (state.publisher === catalogUri) {
@@ -1711,7 +1720,7 @@ async function searchCatalog(catalogUri, catalogTitle) {
 // ── ULTIMI AGGIORNATI ─────────────────────────────────────────────────────
 async function loadRecent(offset=0) {
   if (offset === 0) clearAllFilters();
-  if (offset === 0) addMsg('🕐 Ultimi dataset aggiornati', true);
+  if (offset === 0) addMsg('Ultimi dataset aggiornati', true);
   addTyping();
   try {
     const rows = await sparql(buildRecentQuery(offset));
@@ -1720,7 +1729,7 @@ async function loadRecent(offset=0) {
     const _uris = [...new Set(rows.map(r => val(r,'d')).filter(Boolean))];
     const [_rhMap, _kwMap] = await Promise.all([fetchRhNames(_uris), fetchKeywords(_uris)]);
     renderResults(rows, 'ultimi aggiornati', offset > 0, _rhMap, _kwMap);
-  } catch(e) { removeTyping(); addMsg(`<div class="error-msg">⚠️ ${e.message}</div>`); }
+  } catch(e) { removeTyping(); addMsg(`<div class="error-msg">${e.message}</div>`); }
 }
 
 // ── RICERCA AVANZATA ──────────────────────────────────────────────────────
@@ -1730,7 +1739,7 @@ function toggleAdv() {
   const wrap = document.querySelector('.wizard-wrap');
   const isOpen = panel.classList.toggle('open');
   toggle.classList.toggle('open', isOpen);
-  toggle.textContent = isOpen ? '✕ Chiudi' : '⚙️ Avanzata';
+  toggle.textContent = isOpen ? '✕ Chiudi' : 'Avanzata';
   toggle.setAttribute('aria-expanded', isOpen);
   if (wrap) wrap.classList.toggle('adv-open', isOpen);
   if (isOpen && window.innerWidth <= 768) {
@@ -1757,7 +1766,7 @@ async function doAdvSearch() {
   const sort    = document.getElementById('advSort').value;
 
   if (!q && !theme && !pub && !format && !license) {
-    addMsg('<div class="error-msg">⚠️ Inserisci almeno un criterio.</div>'); return;
+    addMsg('<div class="error-msg">Inserisci almeno un criterio.</div>'); return;
   }
 
   const parts = [];
@@ -1768,12 +1777,12 @@ async function doAdvSearch() {
   if (license) parts.push('licenza:' + license);
   const label = parts.join(' · ');
 
-  addMsg('🔎 Ricerca avanzata: <strong>' + label + '</strong>', true);
+  addMsg('Ricerca avanzata: <strong>' + label + '</strong>', true);
   addTyping();
 
   document.getElementById('advPanel').classList.remove('open');
   document.getElementById('advToggle').classList.remove('open');
-  document.getElementById('advToggle').textContent = '⚙️ Avanzata';
+  document.getElementById('advToggle').textContent = 'Avanzata';
 
   const fc = document.getElementById('advActiveFilters');
   fc.innerHTML = parts.map(function(p){ return '<span class="filter-tag">' + p + '</span>'; }).join('');
@@ -1794,7 +1803,7 @@ async function doAdvSearch() {
     renderResults(rows, label, false, _rhMap, _kwMap);
   } catch(e) {
     removeTyping();
-    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
+    addMsg('<div class="error-msg">' + e.message + '</div>');
   }
 }
 
@@ -1943,7 +1952,7 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
   container.innerHTML = '<div class="data-preview-loading">⏳ Caricamento anteprima…</div>';
 
   if (!resourceUrl) {
-    container.innerHTML = '<div class="data-preview-loading">⚠️ URL risorsa non disponibile.</div>';
+    container.innerHTML = '<div class="data-preview-loading">URL risorsa non disponibile.</div>';
     return;
   }
 
@@ -1972,18 +1981,18 @@ async function tryDataPreview(resourceId, resourceUrl, format, containerId) {
 
     } else if (fmt === 'XLSX') {
       container.innerHTML =
-        '<div class="data-preview-loading">📥 File XLSX: ' +
+        '<div class="data-preview-loading">File XLSX: ' +
         '<a href="' + resourceUrl + '" target="_blank" ' +
         'style="color:var(--primary);font-weight:600">Scarica per visualizzare ↗</a></div>';
     }
   } catch(e) {
-    var msg = '⚠️ Anteprima non disponibile';
+    var msg = 'Anteprima non disponibile';
     if (e.name === 'TimeoutError' || (e.message && e.message.includes('aborted')))
-      msg = '⏱️ Timeout — il file è troppo grande o il server è lento';
+      msg = 'Timeout — il file è troppo grande o il server è lento';
     else if (e.message && e.message.includes('CORS'))
-      msg = '🔒 CORS bloccato — il server non permette accesso diretto';
+      msg = 'CORS bloccato — il server non permette accesso diretto';
     else if (e.message && e.message.includes('HTTP'))
-      msg = '⚠️ ' + e.message;
+      msg = '' + e.message;
     container.innerHTML =
       '<div class="data-preview-loading">' + msg + '. ' +
       '<a href="' + resourceUrl + '" target="_blank" ' +
@@ -2037,7 +2046,7 @@ function renderPreviewTable(container, fields, records, total) {
   }).join('');
   container.innerHTML =
     '<div class="data-preview-header">' +
-      '<span>📊 Anteprima dati — prime ' + records.length + ' righe su ' + total.toLocaleString('it') + ' totali</span>' +
+      '<span>Anteprima dati — prime ' + records.length + ' righe su ' + total.toLocaleString('it') + ' totali</span>' +
     '</div>' +
     '<div class="data-preview-table"><table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>';
 }
@@ -2237,7 +2246,7 @@ async function loadMoreResults(offset) {
     renderResults(rows, lq.label, true, _rhMap, _kwMap);
   } catch(e) {
     removeTyping();
-    addMsg('<div class="error-msg">⚠️ ' + e.message + '</div>');
+    addMsg('<div class="error-msg">' + e.message + '</div>');
   }
   setBusy(false);
 }
@@ -2288,7 +2297,7 @@ async function loadOrgs(offset=0) {
     if (rows.length >= ORG_PAGE) {
       const btn = document.createElement('button');
       btn.className = 'load-more-orgs';
-      btn.textContent = '↓ Altre amministrazioni…';
+      btn.textContent = 'Altre amministrazioni…';
       btn.onclick = () => { orgOffset += ORG_PAGE; loadOrgs(orgOffset); };
       list.appendChild(btn);
     }
