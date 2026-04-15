@@ -1864,56 +1864,44 @@ document.getElementById('searchInput').addEventListener('keydown', e => {
 });
 
 
-// ── AUTOCOMPLETE PUBLISHER ────────────────────────────────────────────────
-let acCache = null;
+// ── AUTOCOMPLETE PUBLISHER (rightsHolder live SPARQL) ────────────────────
 let acTimer = null;
-
-async function loadAcCache() {
-  if (acCache) return acCache;
-  const rows = await sparql(
-    "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
-    "PREFIX dct: <http://purl.org/dc/terms/>\n" +
-    "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
-    "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
-    "  ?d a dcat:Dataset .\n" +
-    "  ?d dct:rightsHolder ?rh .\n" +
-    "  ?rh foaf:name ?name .\n" +
-    "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 500"
-  );
-  // Deduplica per nome normalizzato (trim + lowercase)
-  const byName = new Map();
-  rows.forEach(r => {
-    const n = val(r,'name').trim();
-    const c = parseInt(val(r,'count')||'0');
-    const key = n.toLowerCase();
-    if (!byName.has(key) || c > byName.get(key).count)
-      byName.set(key, { name: n, count: c });
-  });
-  acCache = [...byName.values()].sort((a,b) => b.count - a.count);
-  return acCache;
-}
 
 async function acPublisher(q) {
   clearTimeout(acTimer);
   const list = document.getElementById('acList');
   if (!q || q.length < 2) { list.style.display = 'none'; return; }
   acTimer = setTimeout(async () => {
-    const data = await loadAcCache();
-    const ql = q.toLowerCase();
-    // cerca su nome E su identifier IPA
-    const matches = data.filter(d =>
-      d.name.toLowerCase().includes(ql) || (d.identifier||'').toLowerCase().includes(ql)
-    ).slice(0, 10);
-    if (!matches.length) { list.style.display = 'none'; return; }
-    list.innerHTML = matches.map(m => {
-      const safeName = m.name.replace(/'/g,"\\'");
-      return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
-        '<span>' + m.name + '</span>' +
-        '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
-        '</div>';
-    }).join('');
-    list.style.display = 'block';
-  }, 250);
+    try {
+      const ql = q.toLowerCase().replace(/"/g,'');
+      const rows = await sparql(
+        "PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+        "PREFIX dct: <http://purl.org/dc/terms/>\n" +
+        "PREFIX foaf: <http://xmlns.com/foaf/0.1/>\n" +
+        "SELECT ?name (COUNT(DISTINCT ?d) AS ?count) WHERE {\n" +
+        "  ?d a dcat:Dataset .\n" +
+        "  ?d dct:rightsHolder ?rh .\n" +
+        "  ?rh foaf:name ?name .\n" +
+        '  FILTER(CONTAINS(LCASE(STR(?name)),"' + ql + '"))\n' +
+        "} GROUP BY ?name ORDER BY DESC(?count) LIMIT 12"
+      );
+      const seen = new Set();
+      const unique = [];
+      rows.forEach(r => {
+        const n = val(r,'name').trim();
+        if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); unique.push({ name: n, count: parseInt(val(r,'count')||'0') }); }
+      });
+      if (!unique.length) { list.style.display = 'none'; return; }
+      list.innerHTML = unique.map(m => {
+        const safeName = m.name.replace(/'/g,"\'");
+        return '<div class="ac-item" onclick="selectPub(\'' + safeName + '\')">' +
+          '<span>' + m.name + '</span>' +
+          '<span class="ac-count">' + (m.count||0).toLocaleString('it') + ' ds</span>' +
+          '</div>';
+      }).join('');
+      list.style.display = 'block';
+    } catch(e) { list.style.display = 'none'; }
+  }, 350);
 }
 
 function selectPub(name) {
