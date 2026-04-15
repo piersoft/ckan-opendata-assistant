@@ -1283,6 +1283,19 @@ async function sparql(query) {
 }
 
 function val(b, k) { return b[k]?.value || ''; }
+function fixUrl(url) {
+  if (!url) return url;
+  url = url.replace(/&amp;/g,'&').replace(/&#38;/g,'&');
+  if (url.includes('?') && !url.includes('&')) {
+    var parts = url.split('?');
+    var qs = parts[1]
+      .replace(/(gid=\d+)(single=)/, '$1&$2')
+      .replace(/(single=(?:true|false))(output=)/, '$1&$2')
+      .replace(/(output=[^&]+)(format=)/, '$1&$2');
+    url = parts[0] + '?' + qs;
+  }
+  return url;
+}
 
 // ── UI HELPERS ────────────────────────────────────────────────────────────
 function addMsg(html, isUser = false) {
