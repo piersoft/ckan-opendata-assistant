@@ -1428,7 +1428,8 @@ async function showDataset(dUri, title, org) {
       "    ?d dcat:distribution ?dist .\n" +
       "    OPTIONAL { ?dist dct:title ?distTitle }\n" +
       "    OPTIONAL { ?dist dct:format ?format }\n" +
-      "    OPTIONAL { ?dist dcat:downloadURL ?accessURL }\n" +
+      "    OPTIONAL { ?dist dcat:accessURL ?accessURL }\n" +
+      "    OPTIONAL { ?dist dcat:downloadURL ?downloadURL }\n" +
       "    OPTIONAL { ?dist dct:identifier ?resourceId }\n" +
       "  }\n" +
       "  OPTIONAL {\n" +
@@ -1449,15 +1450,16 @@ async function showDataset(dUri, title, org) {
     // Risorse uniche
     const distMap = new Map();
         rows.forEach(r => {
-      const accessURL  = val(r,'accessURL');
-      const downloadURL = val(r,'downloadURL');
-      const key = accessURL || downloadURL;
+      const accessURL  = fixUrl(val(r,'accessURL'));
+      const downloadURL = fixUrl(val(r,'downloadURL'));
+      const fileUrl = downloadURL || accessURL;
+      const key = fileUrl;
       if (key && !distMap.has(key)) distMap.set(key, {
         title: val(r,'distTitle') || fmtLabel(val(r,'format')) || 'Risorsa',
         format: fmtLabel(val(r,'format')),
         formatUri: val(r,'format'),
-        url: accessURL || downloadURL,
-        downloadURL: downloadURL || accessURL,
+        url: fileUrl,
+        downloadURL: fileUrl,
         resourceId: val(r,'resourceId')
       });
     });
