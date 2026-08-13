@@ -1,0 +1,38 @@
+{
+  "title": "CKAN OpenData Assistant — interfaccia di ricerca SPARQL sul catalogo nazionale dati.gov.it",
+  "description": "Applicazione web a singolo file HTML per la ricerca e l'esplorazione dei dataset del catalogo nazionale italiano dei dati aperti. Interroga direttamente l'endpoint SPARQL lod.dati.gov.it senza backend intermedi: ricerca libera su titolo, publisher e descrizione, filtro per i 13 temi DCAT-AP europei, faccette per publisher, ricerca avanzata per formato e licenza, dettaglio dataset con distribuzioni.",
+  "creators": [
+    {
+      "name": "Paolicelli, Francesco Piero",
+      "orcid": "0009-0001-2324-4193",
+      "affiliation": "Agenzia per l'Italia Digitale (AgID)"
+    }
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "language": "ita",
+  "keywords": [
+    "open data",
+    "CKAN",
+    "SPARQL",
+    "linked open data",
+    "DCAT-AP",
+    "dati.gov.it",
+    "public administration",
+    "Italy"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://piersoft.github.io/ckan-opendata-assistant/",
+      "relation": "isIdenticalTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://lod.dati.gov.it/sparql",
+      "relation": "references",
+      "scheme": "url"
+    }
+  ]
+}
